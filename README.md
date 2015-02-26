@@ -1,2 +1,2 @@
 # CHRT
-Choice &amp; Reaction Time Matlab toolbox
+Choice &amp; Reaction Time Matlab toolbox for NeuroScience.
