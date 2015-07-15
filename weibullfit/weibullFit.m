@@ -13,6 +13,10 @@ function [alpha,beta,llik,abse,pcData] = weibullFit(data)
 %   See also QUICKFIT.
 
 %   Copyright Jian Wang 2014
+
+p = inputParser;
+addRequired(p,'data',@(x) ismatrix(x) && size(x,2) == 3);
+parse(p,data);
        
 % Calculate the proportion of correct choice, RT mean/se using unsigned
 % coherence.

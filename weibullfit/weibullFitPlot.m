@@ -10,6 +10,12 @@ function fh = weibullFitPlot(alpha,beta,pcData)
 
 %   Copyright Jian Wang 2015
 
+p = inputParser;
+addRequired(p,'alpha',@(x) isscalar(x));
+addRequired(p,'beta',@(x) isscalar(x));
+addRequired(p,'pcData',@(x) ismatrix(x) && size(x,2) == 3);
+parse(p,alpha,beta,pcData);
+
 % Calculate weibull fit data.
 fWeib = @(q,x) 1 - 0.5 * exp(-(x/q(1)).^q(2));
 xrange = 0.55;

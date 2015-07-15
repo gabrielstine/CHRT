@@ -12,6 +12,10 @@ function [b,dev,stats,prData] = logitFit(data)
 %   See also GLMFIT.
 
 %   Copyright Jian Wang 2014
+
+p = inputParser;
+addRequired(p,'data',@(x) ismatrix(x) && size(x,2) == 3);
+parse(p,data);
              
 scoh = unique(data(:,1)); % Unique signed coherence.
 prData = zeros(length(scoh),2);

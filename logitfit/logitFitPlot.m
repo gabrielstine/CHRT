@@ -7,6 +7,11 @@ function fh = logitFitPlot(prData,b)
 
 %   Copyright Jian Wang 2015
 
+p = inputParser;
+addRequired(p,'prData',@(x) ismatrix(x) && size(x,2) == 2);
+addRequired(p,'b',@(x) isvector(x) && length(x) == 2);
+parse(p,prData,b);
+
 % Calculate Logit Regression fitting data.
 xrange = 0.55;
 x = linspace(-1.0*xrange,1.0*xrange,101);
