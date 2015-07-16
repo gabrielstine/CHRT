@@ -20,7 +20,7 @@ if nargin < 2
     error('Not enough inputs.');
 end
 
-if nargin > 1
+if nargin > 2
     fitOptions = updateOptions(fitOptions,varargin{:}); % Update options
 end
 

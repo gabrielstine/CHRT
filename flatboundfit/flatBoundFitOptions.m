@@ -4,8 +4,11 @@ classdef flatBoundFitOptions
     %   Copyright Jian Wang 2015
     
     
-    properties (GetAccess = public, SetAccess = public)
+    properties
         theta = NaN(1,7);
+    end
+    
+    properties (Constant = true)
         thetaKey = {'kappa',...
             'A',... % Boundary height
             'tndr',... % Rightward non-decision time or Combined non-decision time
@@ -14,9 +17,14 @@ classdef flatBoundFitOptions
             'cohBias',... % Motion Strength Bias
             'prBias' % Vertical Probability Bias
             };
-        thetaFit;
-        
+    end
+    
+    properties
+        thetaFit;        
         condensedData;
+    end
+    
+    properties (Constant = true)
         condensedDataKey = {'scoh',...% Unique signed coherence
             'rtrm',... % Mean rightward reaction time
             'rtrse',... % Standard error of mean rightward reaction time
@@ -27,7 +35,9 @@ classdef flatBoundFitOptions
             'rtcm',... % Mean correct reaction time
             'rtcse' % Standard error of mean correct reaction time
             };
-        
+    end
+       
+    properties
         ldcb@double = 0; % Logit derived coherence bias.
         
         isRejectMinorRT@logical = true; 
