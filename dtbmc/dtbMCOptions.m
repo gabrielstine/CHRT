@@ -73,7 +73,8 @@ classdef dtbMCOptions
         lowerBoundaryParameter@double; % Lower boundary profile parameter vector.
         lowerBoundaryLowerLimit@double; % Lower limit of lower boundary profile parameter vector.
         
-        fitType; % DTB or Monte Carlo Fit.
+        fitType; % One of DTB, Monte Carlo or FP4.
+        isChoiceVariableDuration@logical = false; % Perform choice variable duration fit.
         
         optMethod; % Optimization method.                
         optMethodList = {'fminsearch',...
@@ -88,9 +89,7 @@ classdef dtbMCOptions
         
         rngSeed; % Random number generator seed.        
         NumWorkers@double; % Number of parallel computation workers.                
-        isUseGPU@logical = false; % Whether to use GPU for computing or not.
-                
-        isPlotIter@logical = false; % Plot the iteration result or not.             
+        isUseGPU@logical = false; % Whether to use GPU for computing or not.                           
     end                                                         
 end
 

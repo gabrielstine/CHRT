@@ -276,8 +276,8 @@ else
 end
 
 if notabs_flag
-    D.notabs.pos_t = sum(D.notabs.pdf(:,y'>=0,:),2);
-    D.notabs.neg_t = sum(D.notabs.pdf(:,y'< 0,:),2); 
+    D.notabs.pos_t = squeeze(sum(D.notabs.pdf(:,y'>=0,:),2));
+    D.notabs.neg_t = squeeze(sum(D.notabs.pdf(:,y'< 0,:),2)); 
 end
 
 D.up.p = sum(D.up.pdf_t,2);

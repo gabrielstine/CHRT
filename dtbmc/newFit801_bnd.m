@@ -31,13 +31,8 @@ function [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
 
 % Copyright Shadlen Lab 2015.
 
-PRINT_STATUS = true;
-PLOT_STATUS = false;
-if isfield(opt,'PLOT_STATUS')
-    PLOT_STATUS = opt.PLOT_STATUS;
-end
 
-% Load 'that' group of fitting parameters.
+% Load 'theta' group of fitting parameters.
 g1 = theta(1:10);
 kappa = g1(1);
 cohBias = g1(2);
@@ -96,148 +91,114 @@ else % non-symmetrical boundary
     Blow = -1.0 * Blow; % inverse, make defining boundary profile easier
 end
 
-
-uv = kappa*(uscoh + cohBias) + uBias; % Drift term (mu).
-useDfu = ~(isnan(sigma) || isnan(bSigma)); % use diffusion?
-
-if useDfu
-    dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % diffusion term without normrnd()
-    rngSeed = opt.rngSeed;
-end
+uv = kappa*(uscoh + cohBias) + uBias; % Drift term (mu)
+dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % diffusion term without normrnd()
+rngSeed = opt.rngSeed;
 useGPU = opt.isUseGPU;
 
-if opt.isMonteCarlo        
-    P = mckernel(uv,t,Bup,Blow,dfu,rngSeed,useGPU); % Monte Carlo Fit
-else
-    if 0 %all(Bup==Bup(1)) && all(Blo==Blo(1)) %we can go analytic
-        % P = analytic_dtb(uv,t,Bup(1),Blo(1),y0);
-    else  % or need to sikappalate with fft method
-        % md=max(abs(uv));
-        % sm=(md*dt+sqrt(dt)*4); %DW to test sense of this
-        % y=linspace(min(Blo)-sm,max(Bup)+sm,512)';
-        nBin = 2^9;
-        y = determineY(kappa, uscoh, dt, Bup, Blow, nBin);
-        yinit = 0*y;
+%TODO: output P must be wrappered into the exact same format.
+switch opt.fitType
+    case 'Monte Carlo'
+        P = mckernel(uv,t,Bup,Blow,dfu,rngSeed,useGPU); % Monte Carlo Fit
         
-        i1 = find(y>=y0, 1,'first');
-        i2 = find(y<=y0, 1,'last');
-        if i1 == i2
-            yinit(i1)=1;
-        else
-            w2=abs(y(i1)-y0);
-            w1=abs(y(i2)-y0);
+    case 'DTB'
+        if 0 %all(Bup==Bup(1)) && all(Blo==Blo(1)) %we can go analytic
+            % P = analytic_dtb(uv,t,Bup(1),Blo(1),y0);
+        else  % or need to sikappalate with fft method
+            % md=max(abs(uv));
+            % sm=(md*dt+sqrt(dt)*4); %DW to test sense of this
+            % y=linspace(min(Blo)-sm,max(Bup)+sm,512)';
+            nBin = 2^9;
+            y = determineY(kappa, uscoh, dt, Bup, Blow, nBin);
+            yinit = 0*y;
             
-            w1=w1/(w1+w2);
-            w2=(1-w1);
-            yinit(i1)=w1;
-            yinit(i2)=w2;
-        end
-        
-        % P = spectral_dtb(uv,t,Bup,Blo,y,yinit); % original version
-        
-        notabs_flag = false;
-        useGPU = false;
-        
-        % antialiased version spectral_dtb
-        if useDfu
-            P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
-        else
-            P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU);
-        end
-    end    
-end
-
-
-for i = 1:length(scoh)
-    Ic = uscoh == scoh(i); % index for the coherence
-    It = find(t>=rt(i), 1); % index for the time (end of viewing time or rt)
-    
-    % distribution of tnd going from rt to zero
-    if scoh(i) >= -1.0*cohBias
-        tnd = tndr;
-        tnd_sd = tndrsd;
-    else
-        tnd = tndl;
-        tnd_sd = tndlsd;
-    end
-    
-    r = normpdf(rt(i)-(1:It)*dt,tnd,tnd_sd)*dt;
-    
-    % reaction time
-    p_up(i) = P.up.pdf_t(Ic,1:It) * r'; %#ok<AGROW>
-    p_lo(i) = P.lo.pdf_t(Ic,1:It) * r'; %#ok<AGROW>
-end
-
-% ensure that probabilites lie between eps and 1-eps
-p_up = clip(p_up,eps,1-eps);
-p_lo = clip(p_lo,eps,1-eps);
-pPred = p_up.*choice'+ p_lo.*~choice';
-pcorr = p_up'.*(scoh>0)+ p_lo'.*(scoh<0);
-logl = -sum(log(pPred));    
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if PRINT_STATUS
-    fprintf('err= %.3f\n',logl);
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if PLOT_STATUS          
-    for k = 1:length(uscoh)        
-        s = scoh==uscoh(k);
-        m(k) = mean(ci(s));
-        se(k)= stderr(ci(s));
-        mrt(k) = mean(rt(s));
-        sert(k) = stderr(rt(s));
-        
-        s1 = scoh==uscoh(k) & ci==1;
-        s2 = scoh==uscoh(k) & ci==0;
-        
-        mrt_lo(k) = mean(rt(s2));
-        sert_lo(k) = stderr(rt(s2));
-        
-        mrt_up(k) = mean(rt(s1));
-        sert_up(k) = stderr(rt(s1));
+            i1 = find(y>=y0, 1,'first');
+            i2 = find(y<=y0, 1,'last');
+            if i1 == i2
+                yinit(i1)=1;
+            else
+                w2=abs(y(i1)-y0);
+                w1=abs(y(i2)-y0);
                 
-        pred(k)=P.up.p(k); %#ok<AGROW>
+                w1=w1/(w1+w2);
+                w2=(1-w1);
+                yinit(i1)=w1;
+                yinit(i2)=w2;
+            end
         
-        %{
-        r1=P.up.p(k)*P.up.mean_t(k);
-        r3=P.lo.p(k)*P.lo.mean_t(k);
-        %}
+            % P = spectral_dtb(uv,t,Bup,Blo,y,yinit); % original version
+            
+            notabs_flag = opt.isChoiceVariableDuration;
+            useGPU = false;
+            
+            % antialiased version spectral_dtb
+            if any(abs(dfu) > eps)
+                P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
+            else
+                P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU);
+            end
+        end
         
-        if uscoh(k) >= -1.0*cohBias
-            tnd = tndr;        
+    case 'FP4'
+        
+        
+    otherwise
+        error('No predefined fit type matched.');
+        
+end
+
+
+if ~opt.isChoiceVariableDuration    
+    for i = 1:length(scoh)
+        Ic = uscoh == scoh(i); % index for the coherence
+        It = find(t>=rt(i), 1); % index for the time (end of viewing time or rt)
+        
+        % distribution of tnd going from rt to zero
+        if scoh(i) >= -1.0*cohBias
+            tnd = tndr;
+            tnd_sd = tndrsd;
         else
-            tnd = tndl;            
-        end               
+            tnd = tndl;
+            tnd_sd = tndlsd;
+        end
         
-        pred_rt_up(k) = P.up.mean_t(k) + tnd; %#ok<AGROW>
-        pred_rt_lo(k) = P.lo.mean_t(k) + tnd; %#ok<AGROW>
+        r = normpdf(rt(i)-(1:It)*dt,tnd,tnd_sd)*dt;
+        
+        % reaction time
+        p_up(i) = P.up.pdf_t(Ic,1:It) * r'; %#ok<AGROW>
+        p_lo(i) = P.lo.pdf_t(Ic,1:It) * r'; %#ok<AGROW>
+    end
+    
+    % ensure that probabilites lie between eps and 1-eps
+    p_up = clip(p_up,eps,1-eps);
+    p_lo = clip(p_lo,eps,1-eps);
+    pPred = p_up.*choice'+ p_lo.*~choice';
+    pcorr = p_up'.*(scoh>0)+ p_lo'.*(scoh<0);
+    logl = -sum(log(pPred));
+
+else
+    % Choice Variable Duration fit error. Error calculation method ported
+    % from choiceVdurFromDiffusion_err.m.
+    
+    % Variable name 'pPred' is chosen for consistence and is equavalent to
+    % variable 'p' in choiceVdurFromDiffusion_err.m.
+    pPred = zeros(size(scoh,1),1);
+    
+    for i = 1:length(scoh)
+        Ic = find(uscoh == scoh(i)); % index for the coherence
+        It = find(t>=rt(i), 1); % index for the time (end of viewing time or rt)
+                        
+        if choice(i) == 1
+            pPred(i) = P.notabs.pos_t(Ic,It) + P.up.cdf_t(Ic,It);
+        else
+            pPred(i) = 1 - (P.notabs.pos_t(Ic,It) + P.up.cdf_t(Ic,It));
+        end
     end
         
-    ww = uscoh;    
-    clf;
-    subplot(1,2,1);
-    plot(ww,pred,'r');    
-    hold on;    
-    errorbar(ww,m,se,'o');
-    xrange = 0.6;
-    set(gca,'xlim',xrange*[-1,1]);
-    xlabel('Motion strength');
-    ylabel('Proportion rightward choices');    
-    %errorbarlogx(0.01);    
-    %New_XTickLabel = get(gca,'xtick');
-    %set(gca,'XTickLabel',New_XTickLabel);    
-    
-    subplot(1,2,2);
-    plot(ww,pred_rt_up,'r');    
-    hold on;
-    plot(ww,pred_rt_lo,'b');        
-    errorbar(ww,mrt_up,sert_up,'ro');
-    errorbar(ww,mrt_lo,sert_lo,'bo');    
-    legend('Fit rightward','Fit leftward','Exp. rightward','Exp. leftward'); 
-    set(gca,'xlim',xrange*[-1,1]);
-    xlabel('Motion strength');
-    ylabel('Reaction time (second)');
-    drawnow
+    pcorr = NaN;
+    logl = -sum(log(pPred));
 end
+
+fprintf('err= %.3f\n',logl);
+
+
