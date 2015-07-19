@@ -1,8 +1,8 @@
 function [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
-%NEWFIT801_BND main function to perform DTB & Monte Carlo fit
+%NEWFIT801_BND main function to perform DTB, Monte Carlo & FP4 fit
 %
-%   This function returns the -logL value of signed coherence data for either 
-%   DTB or Monte Carlo fit.
+%   This function returns the -logL value of signed coherence data using
+%   DTB, Monte Carlo or FP4 fit.
 %
 %   [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
 %
@@ -16,7 +16,7 @@ function [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
 %       P is data structure for dtb_analytic,
 %       pcorr is ?.
 
-% To clean up:
+% TODO:
 % The model assumes that all information is used to make the choice (even
 % though a perturbation in the reflex experiment occurs earlier). Note that
 % there is no RT in the data. The main return argument, err, is to be
@@ -26,13 +26,12 @@ function [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
 %    The other arguments are indexed wrt x and distributions are length(t)
 
 %   version 1.0
-%   2014 revised basing on Shin Kira version, added new features, renamed file to 
-%   newFit801_bnd.m
+%   2014 revised basing on Shin Kira version, added new features, renamed 
+%   file to newFit801_bnd.m
 
 % Copyright Shadlen Lab 2015.
 
-
-% Load 'theta' group of fitting parameters.
+% Load 1st group of fitting parameters, originally 'theta'
 g1 = theta(1:10);
 kappa = g1(1);
 cohBias = g1(2);
@@ -66,9 +65,11 @@ end
 
 t = (0:dt:tmax)';
 
-% load the 2nd group of fitting parameters, calculate up-boundary profile
+
+% Load the 2nd group of fitting parameters, calculate up-boundary profile
 b = theta(11:15);
 Bup = feval(opt.upBoundaryProfile,b,t');
+
 % Bounds stop collapsing when the bounds become less than 0.1% of initial height
 if isnan(b(1))
     error('newFit801_bnd:bup(1) must be provided.');
@@ -76,7 +77,7 @@ end
 
 Bup(Bup <= b(1)*1e-3, 1) = b(1) * 1e-3;
 
-% load the 2nd group of fitting parameters, calculate lower-boundary profile
+% Load the 2nd group of fitting parameters, calculate lower-boundary profile
 b = theta(16:20);
 
 if isempty(b) % symmetrical boundary
@@ -140,7 +141,8 @@ switch opt.fitType
         end
         
     case 'FP4'
-        
+        notabs_flag = opt.isChoiceVariableDuration;
+        P = FP4Wrapper(uv,dfu,t,Bup,Blow,notabs_flag);
         
     otherwise
         error('No predefined fit type matched.');
