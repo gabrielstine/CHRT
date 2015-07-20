@@ -81,7 +81,7 @@ D = struct('drift',drift,...
     'trials',trials);
 
 drift = drift * dt;
-sigma = sigma * sqrt(dt); 
+sigma = sigma * dt;
 
 
 % Monte Carlo Simulation Kernel
