@@ -1,6 +1,8 @@
-function P = FP4Wrapper(adv,dfu,t,Bup,Blow,notAbs)
-
-
+function P = FP4Wrapper(adv,dfu,t,Bup,Blow,y0,notAbs_flag)
+%P = FP4Wrapper(adv,dfu,t,Bup,Blow,y0,notAbs_flag)
+%
+%   FP4 function wrapper.
+%
 
 % Convert input unit accordingly from second to millisecond. Function
 % newFit801_bnd uses standard unit: second. While function FP4,
@@ -9,12 +11,12 @@ function P = FP4Wrapper(adv,dfu,t,Bup,Blow,notAbs)
 % by sqrt(1000) and boundary height needs to be multiplied by sqrt(1000).
 % This conversion formula can be determined by method of unit in a way that
 % A/KC has unit while KC*A is unit free (More info on Flat Bound Fit).
-
 adv = adv/sqrt(1000);
 dfu = dfu/sqrt(1000);
 t = t*1000;
 Bup = Bup*sqrt(1000);
 Blow = Blow*sqrt(1000);
+y0 = y0/sqrt(1E3);
 
 % Define time and mesh grid resolution.
 dt = t(2) - t(1);
@@ -39,35 +41,31 @@ end
 
 % Define a delta function on xmesh.
 delta = zeros(size(xmesh));
-delta(abs(xmesh)==min(abs(xmesh))) = 1;
+i1 = find(xmesh>=y0, 1,'first');
+i2 = find(xmesh<=y0, 1,'last');
 
-% Find the probability density of decision variable across time for 
-% stimulated and nonstimulated trials.
-% Ptba = zeros(length(t)-1, 2, length(adv));             % time  * bound * signed_coh
-% Pxta = zeros(length(xmesh), length(t)-1, length(adv)); % xmesh * time  * signed_coh
-% Pg0a = zeros(length(t)-1, length(adv));
+if i1 == i2
+    delta(i1) = 1;
+else    
+    w1 = abs(xmesh(i2)-y0);    
+    w2 = abs(xmesh(i1)-y0);
+    w1 = w1/(w1+w2);
+    w2 = (1-w1);
+    delta(i1) = w1;
+    delta(i2) = w2;
+end
+
 P = struct;
 
-% Run FP4 to calculate Ptba and Pxta for each coherence and stimulation 
-% condition.
 for i = 1 : length(adv)
     mu = adv(i);
     sigma = dfu(i);
     uinit = delta;    
     b_change = [Blow - Blow(1); Bup - Bup(1)]';    
-%     [~, ~, Ptb, ~, Pxt] = FP4(xmesh, uinit, mu, sigma, b_change, b_margin, dt);
-    [~, ~, Ptb, Pg0, ~] = FP4(xmesh, uinit, mu, sigma, b_change, b_margin(i,:), dt);
-    
-%     Ptba(:,:,i) = [local_sum(Ptb(2:end,1),round(1/dt)), local_sum(Ptb(2:end,2),round(1/dt))];
-%     Pxta(:,:,i) = Pxt(:,1/dt:1/dt:end);
-%     Pg0a(:,i) = Pg0;
-
-%     P.low.pdf_t(i,:) = local_sum(Ptb(2:end,1),round(1/dt));
+    [~, ~, Ptb, Pg0, ~] = FP4(xmesh, uinit, mu, sigma, b_change, b_margin(i,:), dt);    
     P.lo.pdf_t(i,:) = Ptb(2:end,1);
-%     P.up.pdf_t(i,:) = local_sum(Ptb(2:end,2),round(1/dt));
     P.up.pdf_t(i,:) = Ptb(2:end,2);
-    P.notabs.pos_t(i,:) = Pg0;
-            
+    P.notabs.pos_t(i,:) = Pg0;            
 end
 
 

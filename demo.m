@@ -197,7 +197,7 @@ fh4 = flatBoundFitPlot(thetaFit,fitOptions,'isPlotErrorBar',false)
 %       cohBias = coherence bias or motion strength bias,
 %       uBias = drift force bias,
 %       sigma & bSigma are 2 parameters to estimate the standard deviation,
-%       typically choose 1.0 and 0.5.
+%       typically choose 1.0*sqrt(1E3) and 0.5*sqrt(1E3).
 % See also MCFIT for more info.
 %
 % To start with Monte Carlo simulation, first specify the list of signed 
@@ -215,7 +215,7 @@ scoh = [-0.512,-0.256,-0.128,-0.064,-0.032,...
 % 'kappa','cohBias','uBias','sigma','bSigma','tndr','tndrsd','tndl','tndlsd'
 
 simOptions = mcSimOptions
-simOptions.theta = [0.457*sqrt(1E3), 0.0,0.0, 1.0,0.5, 0.3,0.0, 0.3,0.0]
+simOptions.theta = [0.457*sqrt(1E3), 0.0,0.0, 1.0*sqrt(1E3),0.5*sqrt(1E3), 0.3,0.0, 0.3,0.0]
 
 % The up- & lower- boundary profiles also need to be specified. 6
 % predefined boundary profiles are made available and listed in
@@ -287,16 +287,16 @@ fitOptions = dtbMCOptions
 % method will treat this parameter value as fixed and will not optimize it,
 % which is the way used here to avoid fitting known parameter. 
 
-fitOptions.thetaUpLimit = [25.7689,...
-    0.0,0.0, 1.0,0.0,...
+fitOptions.thetaUpLimit = [0.8149*sqrt(1E3),...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
     3.6170,0.5000, 3.6170,0.5000,...
     0.0]
-fitOptions.theta = [8.5896,...
-    0.0,0.0, 1.0,0.0,...
+fitOptions.theta = [0.2716*sqrt(1E3),...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
     0.2794,0.1190, 0.2794,0.1190,...    
     0.0]
 fitOptions.thetaLowerLimit = [0.0,...
-    0.0,0.0, 1.0,0.0,...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
     0.0,0.01, 0.0,0.01,...
     0.0]
 
@@ -312,12 +312,12 @@ fitOptions.thetaLowerLimit = [0.0,...
 
 fitOptions.upBoundaryProfile = 'flat'
 fitOptions.upBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
-fitOptions.upBoundaryParameter = [1.4483, 0.0,0.0,0.0,0.0]
+fitOptions.upBoundaryParameter = [45.7993/sqrt(1E3), 0.0,0.0,0.0,0.0]
 fitOptions.upBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
 
 fitOptions.lowerBoundaryProfile = 'flat'
 fitOptions.lowerBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
-fitOptions.lowerBoundaryParameter = [1.4483, 0.0,0.0,0.0,0.0]
+fitOptions.lowerBoundaryParameter = [45.7993/sqrt(1E3), 0.0,0.0,0.0,0.0]
 fitOptions.lowerBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
 
 % 'fitType' field is used by internal functions to specify whether DTB
@@ -350,6 +350,7 @@ fitOptions.tMax = 5.0
 
 fitResult = dtbFit(data,fitOptions)
 
+fitResult = fpFit(data,fitOptions)
 
 % For Monte Carlo fit, simply set up the common fit options fields as above.
 % Or just reuse the above fitting options. Notice that, 'y0' parameter in 

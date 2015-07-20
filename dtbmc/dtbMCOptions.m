@@ -58,7 +58,7 @@ classdef dtbMCOptions
             'tndrsd',... % Standard deviation of rightward non-decision time.
             'tndl',... % Leftward non-decision time.
             'tndlsd',... % Standard deviation of leftward non-decision time.
-            'y0'}; % ???       
+            'y0'}; % Initial distribution position.       
         thetaUpLimit@double; % Up limit of theta field.
         theta@double;
         thetaLowerLimit@double; % Lower limit of theta field.

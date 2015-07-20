@@ -31,7 +31,7 @@ function [logl,uscoh,t,P,pcorr] = newFit801_bnd(theta,data,opt)
 
 % Copyright Shadlen Lab 2015.
 
-% Load 1st group of fitting parameters, originally 'theta'
+% Load the 1st group of fitting parameters, originally 'theta'.
 g1 = theta(1:10);
 kappa = g1(1);
 cohBias = g1(2);
@@ -45,10 +45,9 @@ tndlsd = g1(9);
 y0 = g1(10);
 
 scoh = data(:,1); % [-1,1]
-ci  = data(:,2); % 0 for leftward choice and 1 for rightward choice.
-rt  = data(:,3); % Unit of second.
-choice = logical(ci);
 uscoh = unique(scoh)'; % Unique signed coherence.
+choice  = logical(data(:,2)); % 0 for leftward choice and 1 for rightward choice.
+rt  = data(:,3); % Unit of second.
 
 if isempty(opt.dt)
     dt = 0.5E-3; % Unit of second.
@@ -57,92 +56,83 @@ else
 end
 
 if isempty(opt.tMax)
-    tmax = 5; % Unit of second.
-    % tmax = max(rt)+0.3;
+    tmax = 5; % Unit of second.    
 else
     tmax = opt.tMax;
 end
 
 t = (0:dt:tmax)';
 
-
-% Load the 2nd group of fitting parameters, calculate up-boundary profile
+% Load the 2nd group of fitting parameters, calculate up-boundary profile.
 b = theta(11:15);
 Bup = feval(opt.upBoundaryProfile,b,t');
 
-% Bounds stop collapsing when the bounds become less than 0.1% of initial height
+% Bounds stop collapsing when the bounds become less than 0.1% of initial 
+% height.
 if isnan(b(1))
     error('newFit801_bnd:bup(1) must be provided.');
 end
 
 Bup(Bup <= b(1)*1e-3, 1) = b(1) * 1e-3;
 
-% Load the 2nd group of fitting parameters, calculate lower-boundary profile
+% Load the 2nd group of fitting parameters, calculate lower-boundary
+% profile.
 b = theta(16:20);
 
-if isempty(b) % symmetrical boundary
+if isempty(b) % Symmetrical boundary.
     Blow = -Bup; 
-else % non-symmetrical boundary
+else % Non-symmetrical boundary.
     Blow = feval(opt.lowBoundaryProfile,b,t');
+    
     if isnan(b(1))
         error('newFit801_bnd:blo(1) must be provided.');
     end
     
     Blow(Blow <= b(1)*1e-3, 1) = b(1) * 1e-3;
-    Blow = -1.0 * Blow; % inverse, make defining boundary profile easier
+    Blow = -1.0 * Blow; % Inverse, make defining boundary profile easier.
 end
 
-uv = kappa*(uscoh + cohBias) + uBias; % Drift term (mu)
-dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % diffusion term without normrnd()
+drift = kappa*(uscoh + cohBias) + uBias; % Drift term (mu).
+dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % Diffusion term without normrnd().
 rngSeed = opt.rngSeed;
 useGPU = opt.isUseGPU;
 
 %TODO: output P must be wrappered into the exact same format.
 switch opt.fitType
     case 'Monte Carlo'
-        P = mckernel(uv,t,Bup,Blow,dfu,rngSeed,useGPU); % Monte Carlo Fit
+        P = mckernel(drift,t,Bup,Blow,dfu,rngSeed,useGPU);
         
-    case 'DTB'
-        if 0 %all(Bup==Bup(1)) && all(Blo==Blo(1)) %we can go analytic
-            % P = analytic_dtb(uv,t,Bup(1),Blo(1),y0);
-        else  % or need to sikappalate with fft method
-            % md=max(abs(uv));
-            % sm=(md*dt+sqrt(dt)*4); %DW to test sense of this
-            % y=linspace(min(Blo)-sm,max(Bup)+sm,512)';
-            nBin = 2^9;
-            y = determineY(kappa, uscoh, dt, Bup, Blow, nBin);
-            yinit = 0*y;
-            
-            i1 = find(y>=y0, 1,'first');
-            i2 = find(y<=y0, 1,'last');
-            if i1 == i2
-                yinit(i1)=1;
-            else
-                w2=abs(y(i1)-y0);
-                w1=abs(y(i2)-y0);
-                
-                w1=w1/(w1+w2);
-                w2=(1-w1);
-                yinit(i1)=w1;
-                yinit(i2)=w2;
-            end
+    case 'DTB'        
+        nBin = 2^9;
+        y = determineY(kappa, uscoh, dt, Bup, Blow, nBin);
+        yinit = 0*y;
         
-            % P = spectral_dtb(uv,t,Bup,Blo,y,yinit); % original version
+        i1 = find(y>=y0, 1,'first');
+        i2 = find(y<=y0, 1,'last');
+        if i1 == i2
+            yinit(i1)=1;
+        else
+            w2=abs(y(i1)-y0);
+            w1=abs(y(i2)-y0);
             
-            notabs_flag = opt.isChoiceVariableDuration;
-            useGPU = false;
-            
-            % antialiased version spectral_dtb
-            if any(abs(dfu) > eps)
-                P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
-            else
-                P = spectral_dtbAA(uv,t,Bup,Blow,y,yinit,notabs_flag,useGPU);
-            end
+            w1=w1/(w1+w2);
+            w2=(1-w1);
+            yinit(i1)=w1;
+            yinit(i2)=w2;
         end
+                        
+        notabs_flag = opt.isChoiceVariableDuration;
+        useGPU = false;
+                
+        if any(abs(dfu) > eps)
+            P = spectral_dtbAA(drift,t,Bup,Blow,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
+        else
+            P = spectral_dtbAA(drift,t,Bup,Blow,y,yinit,notabs_flag,useGPU);
+        end        
         
     case 'FP4'
         notabs_flag = opt.isChoiceVariableDuration;
-        P = FP4Wrapper(uv,dfu,t,Bup,Blow,notabs_flag);
+        P = FP4Wrapper(drift,dfu,t,Bup,Blow,y0,notabs_flag);
         
     otherwise
         error('No predefined fit type matched.');
