@@ -80,16 +80,16 @@ Bup(Bup <= b(1)*1e-3, 1) = b(1) * 1e-3;
 b = theta(16:20);
 
 if isempty(b) % Symmetrical boundary.
-    Blow = -Bup; 
+    Blo = -Bup; 
 else % Non-symmetrical boundary.
-    Blow = feval(opt.lowBoundaryProfile,b,t');
+    Blo = feval(opt.lowBoundaryProfile,b,t');
     
     if isnan(b(1))
         error('newFit801_bnd:blo(1) must be provided.');
     end
     
-    Blow(Blow <= b(1)*1e-3, 1) = b(1) * 1e-3;
-    Blow = -1.0 * Blow; % Inverse, make defining boundary profile easier.
+    Blo(Blo <= b(1)*1e-3, 1) = b(1) * 1e-3;
+    Blo = -1.0 * Blo; % Inverse, make defining boundary profile easier.
 end
 
 drift = kappa*(uscoh + cohBias) + uBias; % Drift term (mu).
@@ -100,11 +100,11 @@ useGPU = opt.isUseGPU;
 %TODO: output P must be wrappered into the exact same format.
 switch opt.fitType
     case 'Monte Carlo'
-        P = mckernel(drift,t,Bup,Blow,dfu,rngSeed,useGPU);
+        P = mckernel(drift,t,Bup,Blo,dfu,rngSeed,useGPU);
         
     case 'DTB'        
         nBin = 2^9;
-        y = determineY(kappa, uscoh, dt, Bup, Blow, nBin);
+        y = determineY(kappa, uscoh, dt, Bup, Blo, nBin);
         yinit = 0*y;
         
         i1 = find(y>=y0, 1,'first');
@@ -125,14 +125,14 @@ switch opt.fitType
         useGPU = false;
                 
         if any(abs(dfu) > eps)
-            P = spectral_dtbAA(drift,t,Bup,Blow,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
+            P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
         else
-            P = spectral_dtbAA(drift,t,Bup,Blow,y,yinit,notabs_flag,useGPU);
+            P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU);
         end        
         
     case 'FP4'
         notabs_flag = opt.isChoiceVariableDuration;
-        P = FP4Wrapper(drift,dfu,t,Bup,Blow,y0,notabs_flag);
+        P = FP4Wrapper(drift,dfu,t,Bup,Blo,y0,notabs_flag);
         
     otherwise
         error('No predefined fit type matched.');

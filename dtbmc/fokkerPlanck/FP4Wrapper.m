@@ -1,8 +1,10 @@
-function P = FP4Wrapper(adv,dfu,t,Bup,Blow,y0,notAbs_flag)
+function P = FP4Wrapper(adv,dfu,t,Bup,Blo,y0,notAbs_flag)
 %P = FP4Wrapper(adv,dfu,t,Bup,Blow,y0,notAbs_flag)
 %
 %   FP4 function wrapper.
 %
+
+P = struct('drift',adv,'t',t,'Bup',Bup,'Blo',Blo);
 
 % Convert input unit accordingly from second to millisecond. Function
 % newFit801_bnd uses standard unit: second. While function FP4,
@@ -15,16 +17,16 @@ adv = adv/sqrt(1000);
 dfu = dfu/sqrt(1000);
 t = t*1000;
 Bup = Bup*sqrt(1000);
-Blow = Blow*sqrt(1000);
+Blo = Blo*sqrt(1000);
 y0 = y0/sqrt(1E3);
 
 % Define time and mesh grid resolution.
 dt = t(2) - t(1);
-dx = min([0.1, abs(Bup(1))/100, abs(Blow(1))/100]);
+dx = min([0.1, abs(Bup(1))/100, abs(Blo(1))/100]);
 
 % Define xmesh and the ghost cells for bound crossing probability.
 b_margin = repmat(4*dfu', [1 2]);
-B = max([abs(Bup),abs(Blow)]);
+B = max([abs(Bup),abs(Blo)]);
 xmesh = (-B-b_margin(1)+dx : dx : B+b_margin(2)-dx)';
 
 % Adjust dx so that the mesh has zero and is therefore symmetric.
@@ -55,13 +57,11 @@ else
     delta(i2) = w2;
 end
 
-P = struct;
-
 for i = 1 : length(adv)
     mu = adv(i);
     sigma = dfu(i);
     uinit = delta;    
-    b_change = [Blow - Blow(1); Bup - Bup(1)]';    
+    b_change = [Blo - Blo(1); Bup - Bup(1)]';    
     [~, ~, Ptb, Pg0, ~] = FP4(xmesh, uinit, mu, sigma, b_change, b_margin(i,:), dt);    
     P.lo.pdf_t(i,:) = Ptb(2:end,1);
     P.up.pdf_t(i,:) = Ptb(2:end,2);
