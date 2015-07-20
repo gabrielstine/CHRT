@@ -1,4 +1,4 @@
-function D =  mckernel(drift,t,Bup,Blo,sigma,rngseed,useGPU,trials)
+function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,useGPU,trials)
 %MCKERNEL kernel of Monte Carlo simulation for MCFIT fitting
 %
 % D =  mckernel(drift,t,Bup,Blo,sigma,rngseed,useGPU,trials)
@@ -75,6 +75,7 @@ D = struct('drift',drift,...
     't',t,...
     'Bup',Bup,...
     'Blo',Blo,...
+    'y0',y0,...
     'sigma',sigma,...
     'rngseed',rngseed,...
     'useGPU',useGPU,...
@@ -82,7 +83,6 @@ D = struct('drift',drift,...
 
 drift = drift * dt;
 sigma = sigma * dt;
-
 
 % Monte Carlo Simulation Kernel
 if useGPU
@@ -138,7 +138,7 @@ switch accelerator
                 
         for n1 = 1:nd                        
             dftForce = rndcloud(:,:,n1) * sigma(n1) + drift(n1);
-            dftSum = [zeros(1,trials); cumsum(dftForce,1)];
+            dftSum = [zeros(1,trials); cumsum(dftForce,1)] + y0;
                                                                        
             dftBup = dftSum >= BupMtx;
             dftBlo = dftSum <= BloMtx;            

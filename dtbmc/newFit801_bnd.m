@@ -100,7 +100,7 @@ useGPU = opt.isUseGPU;
 %TODO: output P must be wrappered into the exact same format.
 switch opt.fitType
     case 'Monte Carlo'
-        P = mckernel(drift,t,Bup,Blo,dfu,rngSeed,useGPU);
+        P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,useGPU);
         
     case 'DTB'        
         nBin = 2^9;
