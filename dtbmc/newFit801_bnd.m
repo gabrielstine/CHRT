@@ -97,7 +97,6 @@ dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % Diffusion term without normrnd().
 rngSeed = opt.rngSeed;
 useGPU = opt.isUseGPU;
 
-%TODO: output P must be wrappered into the exact same format.
 switch opt.fitType
     case 'Monte Carlo'
         P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,useGPU);

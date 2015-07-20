@@ -350,6 +350,11 @@ fitOptions.tMax = 5.0
 
 fitResult = dtbFit(data,fitOptions)
 
+% When using FP4 (Chang-Cooper Method to solve Fokker-Planck equation) to
+% fit data, time step needs to be smaller. Call FPFIT function as
+% following.
+
+fitOptions.dt = 0.5E-3
 fitResult = fpFit(data,fitOptions)
 
 % For Monte Carlo fit, simply set up the common fit options fields as above.
