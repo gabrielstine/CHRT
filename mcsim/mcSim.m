@@ -91,7 +91,7 @@ BupMatrix = repmat(Bup',1,trials);
 BlowerMatrix = repmat(Blower',1,trials);
 simData = zeros(trials,nd,3); % Matrix of [scoh,lo 0/up 1, ndt]
 mu = drift * dt;
-sd = dfu * sqrt(dt); % Standard deviance is calculated in this way to make 
+sd = dfu * dt; % Standard deviance is calculated in this way to make 
                      % sum(variance) = 1 per second.
 
 for n1 = 1:nd
