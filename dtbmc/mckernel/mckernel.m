@@ -1,7 +1,7 @@
-function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,useGPU,trials)
+function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
 %MCKERNEL kernel of Monte Carlo simulation for MCFIT fitting
 %
-% D =  mckernel(drift,t,Bup,Blo,sigma,rngseed,useGPU,trials)
+% D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,useGPU,trials)
 %
 % This Monte Carlo Simulation kernel is a dual of spectral_dtb function, gives 
 % 'fake' spectral solutions to bounded drift diffusion and can handle arbitrary 
@@ -12,6 +12,7 @@ function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,useGPU,trials)
 %   't' is the time series in seconds,
 %   'Bup & Blo' are ROW vector bounds with Blo(t) < Bup(t), can be scalars if 
 %       bounds are flat (+/-Inf bounds are allowed),
+%   'y0' is initial distribution position,
 %   'sigma' is the standard deviation,  
 %   'rngseed' is the random number generator seed,
 %   'useGPU' is a flag to use GPU for calculation or not, by default, false,
@@ -46,8 +47,15 @@ if nargin < 8 || ~exist('trials','var')
     trials = 2000;
 end
 
+%
+drift = drift / sqrt(1000);
+Bup = Bup * sqrt(1000);
+Blo = Blo * sqrt(1000);
+y0 = y0 * sqrt(1000);
+sigma = sigma / sqrt(1000);
+
 nt = length(t);
-dt = t(2) - t(1);
+dt = (t(2) - t(1))*1000; % millisecond.
 nd = length(drift);
 
 % set random number generator seed
@@ -82,7 +90,7 @@ D = struct('drift',drift,...
     'trials',trials);
 
 drift = drift * dt;
-sigma = sigma * dt;
+sigma = sigma * sqrt(dt);
 
 % Monte Carlo Simulation Kernel
 if useGPU
@@ -107,7 +115,7 @@ switch accelerator
         
         for n1 = 1:nd % drift rate            
             dftForce_gpu = gpuArray.randn(nt-1,trials) * sigma(n1) + drift(n1);                                               
-            dftSum_gpu = [gpuArray.zeros(1,trials); cumsum(dftForce_gpu,1)];
+            dftSum_gpu = [gpuArray.zeros(1,trials); cumsum(dftForce_gpu,1)] + y0;
                                                 
             dftBup_gpu = dftSum_gpu >= BupMtx_gpu;                        
             dftBlo_gpu = dftSum_gpu <= BloMtx_gpu;
@@ -133,6 +141,10 @@ switch accelerator
         up_pdf_t = zeros(nt,nd); % pre-allocate
         lo_pdf_t = zeros(nt,nd);
         
+        if notabs_flag
+           pos_t = zeros(nt,nd); 
+        end
+        
         BupMtx = repmat(Bup',1,trials);
         BloMtx = repmat(Blo',1,trials);
                 
@@ -150,26 +162,50 @@ switch accelerator
                 iu = find(dftBup(:,n2),1,'first'); % index of hitting up bound
                 il = find(dftBlo(:,n2),1,'first'); % index of hitting lo bound
                 
-                % update hitting bound record
+                % Update hitting bound record.
                 if ~isempty(iu) && isempty(il)
                     hitUp(iu) = hitUp(iu) + 1;
+                    
+                    if notabs_flag
+                       pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n1)>0);                    
+                    end                    
                 elseif isempty(iu) && ~isempty(il)
                     hitLo(il) = hitLo(il) + 1;
+                    
+                    if notabs_flag
+                       pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n1)>0);                     
+                    end
                 elseif ~isempty(iu) && ~isempty(il)
                     if iu <= il
                         hitUp(iu) = hitUp(iu) + 1;
+                        
+                        if notabs_flag
+                            pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n1)>0);
+                        end
                     else
                         hitLo(il) = hitLo(il) + 1;
+                        
+                        if notabs_flag
+                            pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n1)>0);
+                        end
                     end
                 end                
             end
             
             up_pdf_t(:,n1) = hitUp / trials;
-            lo_pdf_t(:,n1) = hitLo / trials;            
+            lo_pdf_t(:,n1) = hitLo / trials;       
+            
+            if notabs_flag
+               pos_t = pos_t / trials; 
+            end
         end                                     
         
         D.up.pdf_t = up_pdf_t';
         D.lo.pdf_t = lo_pdf_t';
+        
+        if notabs_flag
+           D.notabs.pos_t = pos_t'; 
+        end
 end
 
 D.up.p = sum(D.up.pdf_t,2);

@@ -99,7 +99,8 @@ useGPU = opt.isUseGPU;
 
 switch opt.fitType
     case 'Monte Carlo'
-        P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,useGPU);
+        notabs_flag = opt.isChoiceVariableDuration;
+        P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,notabs_flag,useGPU);
         
     case 'DTB'        
         nBin = 2^9;
