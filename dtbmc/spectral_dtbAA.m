@@ -110,7 +110,7 @@ E2 = E1.*exp(-1i.*omega.*repmat(drift,[ny,1])*dt);
 % FFT of the diffusion term
 if exist('dfu','var')
     tempOmega = repmat(reshape(omega,[1,size(omega)]),[nt,1,1]);
-    DFUfft = exp(-1i.*tempOmega.*dfu*dt);
+    DFUfft = exp(-1i.*tempOmega.*dfu*dt); %TODO: sqrt(dt)
 end
 
 % Preallocate
