@@ -7,7 +7,7 @@ function P = FP4Wrapper(adv,dfu,t,Bup,Blo,y0,notAbs_flag)
 P = struct('drift',adv,'t',t,'Bup',Bup,'Blo',Blo);
 
 % Convert input unit accordingly from second to millisecond. Function
-% newFit801_bnd uses standard unit: second. While function FP4,
+% newFit801_bnd uses standard unit: second. While function FP4 &
 % FP4_BoundCrossZero uses millisecond. To convert, the advective rate
 % (drift rate) and diffusion rate (standard deviation) need to be divided
 % by sqrt(1000) and boundary height needs to be multiplied by sqrt(1000).

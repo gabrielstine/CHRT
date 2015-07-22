@@ -96,13 +96,18 @@ drift = kappa*(uscoh + cohBias) + uBias; % Drift term (mu).
 dfu = sqrt(sigma^2 + bSigma * abs(uscoh)); % Diffusion term without normrnd().
 rngSeed = opt.rngSeed;
 useGPU = opt.isUseGPU;
+notabs_flag = opt.isChoiceVariableDuration;
 
-switch opt.fitType
-    case 'Monte Carlo'
-        notabs_flag = opt.isChoiceVariableDuration;
+% Spectral_dtbAA method is developed basing on the assumption that time unit
+% is second. While Monte Carlo simulation and FP4 method are developed
+% basing on the assumption that time unit is millisecond. Thus there needs
+% to convert 'theta' parameter properly by a factor of sqrt(1E3) before
+% computation.
+switch opt.fitType    
+    case 'Monte Carlo'        
         P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,notabs_flag,useGPU);
         
-    case 'DTB'        
+    case 'DTB'                
         nBin = 2^9;
         y = determineY(kappa, uscoh, dt, Bup, Blo, nBin);
         yinit = 0*y;
@@ -120,8 +125,7 @@ switch opt.fitType
             yinit(i1)=w1;
             yinit(i2)=w2;
         end
-                        
-        notabs_flag = opt.isChoiceVariableDuration;
+        
         useGPU = false;
                 
         if any(abs(dfu) > eps)
@@ -130,8 +134,7 @@ switch opt.fitType
             P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU);
         end        
         
-    case 'FP4'
-        notabs_flag = opt.isChoiceVariableDuration;
+    case 'FP4'        
         P = FP4Wrapper(drift,dfu,t,Bup,Blo,y0,notabs_flag);
         
     otherwise

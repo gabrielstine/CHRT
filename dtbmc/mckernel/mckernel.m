@@ -1,7 +1,7 @@
 function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
 %MCKERNEL kernel of Monte Carlo simulation for MCFIT fitting
 %
-% D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,useGPU,trials)
+% D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
 %
 % This Monte Carlo Simulation kernel is a dual of spectral_dtb function, gives 
 % 'fake' spectral solutions to bounded drift diffusion and can handle arbitrary 
@@ -15,6 +15,8 @@ function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trial
 %   'y0' is initial distribution position,
 %   'sigma' is the standard deviation,  
 %   'rngseed' is the random number generator seed,
+%   'notabs_flag' is flag to calculate probability of not absorped drift
+%       above zero,
 %   'useGPU' is a flag to use GPU for calculation or not, by default, false,
 %   'trials' is the number of trials to compute.
 %
@@ -47,7 +49,10 @@ if nargin < 8 || ~exist('trials','var')
     trials = 2000;
 end
 
-%
+% In theory, Monte Carlo simulation is developed basing on the assumption
+% that the standard deviation of drift rate is 1 in 1 millisecond. Thus all
+% the fitting parameters are corresponding value when time is in unit of
+% second, and need to be converted for time in unit of millisecond.
 drift = drift / sqrt(1000);
 Bup = Bup * sqrt(1000);
 Blo = Blo * sqrt(1000);
@@ -89,6 +94,11 @@ D = struct('drift',drift,...
     'useGPU',useGPU,...
     'trials',trials);
 
+% The standard deviation in 1 millisecond is assumed to 1 technically. If
+% the time step size is less than 1 millisecond, the standard deviation for
+% each time step has to be multipled by sqrt(dt) so that the total variance
+% for all the drifts in 1 millisecond will be equal to the standard
+% deviation of 1 single one-millisecond long drift.
 drift = drift * dt;
 sigma = sigma * sqrt(dt);
 
