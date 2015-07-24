@@ -126,13 +126,8 @@ switch opt.fitType
             yinit(i2)=w2;
         end
         
-        useGPU = false;
-                
-        if any(abs(dfu) > eps)
-            P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU,dfu,rngSeed);
-        else
-            P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU);
-        end        
+        useGPU = false;                
+        P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU,dfu);
         
     case 'FP4'        
         P = FP4Wrapper(drift,dfu,t,Bup,Blo,y0,notabs_flag);

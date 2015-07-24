@@ -1,5 +1,5 @@
-function D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU,varargin)
-% D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU)
+function D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU,dfu)
+% D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU,dfu)
 %
 % This is the antialiased version of spectral_dtb function, gives spectral 
 % solutions to bounded drift diffusion and can handle arbitrary changing bounds.
@@ -18,6 +18,7 @@ function D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU,varargin)
 %     pdf. This calculation can take a lot of memory. By default 0 if not
 %     specified,
 % 'useGPU' is a flag to use GPU for calculation or not, by default false.
+% 'dfu' is the standard deviations of drift vector.
 %
 % Outputs:
 % Returns a structure D including all the above input arguments and
@@ -49,29 +50,11 @@ function D =  spectral_dtbAA(drift,t,Bup,Blo,y,y0,notabs_flag,useGPU,varargin)
 % Copyright 2013 Yul Kang
 % Copyright 2013 Jian Wang
 
-if nargin < 7 || ~exist('notabs_flag','var')
-    notabs_flag = 0; % Flag to detetrmine whether to store the notabs pdf
-end
-
-if nargin < 8 || ~exist('useGPU','var')
-    useGPU = false;
-end
-
 nt = length(t);
 dt = t(2)-t(1); % Sampling time interval
 nd = length(drift);
 ny = length(y);
-
-if length(varargin) == 2 % diffusion term
-    dfu = varargin{1};
-    rngseed = varargin{2};
-    rng(rngseed);
-    rndnum = normrnd(0,1,[nt,1,length(dfu)]); % [nt,1,length(df)]
-    rndnum = repmat(rndnum,[1,ny,1]); % [nt,ny,length(df)]
-    dfu = reshape(dfu,[1,1,length(dfu)]);
-    dfu = repmat(dfu,[nt,ny,1]);    
-    dfu = bsxfun(@times,rndnum,dfu);   
-end
+dfu = repmat(dfu,[ny,1]);
 
 if round(log2(ny)) ~= log2(ny)
     error('Length of y must be a power of 2');
@@ -102,16 +85,11 @@ end
 kk = repmat([0:ny/2 -ny/2+1:-1]',[1,nd]);
 omega = 2*pi*kk/range(y);
 % fft of the normal distribution - scaled suitably by dt
-E1 = exp(-0.5*dt*omega.^2); 
+% E1 = exp(-0.5*dt*omega.^2); 
+E1 = exp(-0.5*dt*omega.^2.*(dfu/sqrt(1E3)).^2); 
 % This is the set of shifted gaussians in the frequency domain with one gaussian 
 % per drift (each column)
 E2 = E1.*exp(-1i.*omega.*repmat(drift,[ny,1])*dt);
-
-% FFT of the diffusion term
-if exist('dfu','var')
-    tempOmega = repmat(reshape(omega,[1,size(omega)]),[nt,1,1]);
-    DFUfft = exp(-1i.*tempOmega.*dfu*dt); %TODO: sqrt(dt)
-end
 
 % Preallocate
 D.up.pdf_t = zeros(nd,nt);
@@ -151,12 +129,7 @@ if ~useGPU
 else
    wtAliasUp_gpu = gpuArray(wtAliasUp);
    wtAliasDn_gpu = gpuArray(wtAliasDn);
-   E2_gpu = gpuArray(E2);
-   
-   if exist('DFUfft','var')
-       DFUfft_gpu = gpuArray(DFUfft);
-   end
-   
+   E2_gpu = gpuArray(E2);      
    U_gpu = gpuArray(U);   
    upVA_gpu = gpuArray.zeros(nd,nt); % gpuArray of upV_gpu and dnV_gpu
    dnVA_gpu = gpuArray.zeros(nd,nt); 
@@ -176,17 +149,9 @@ for k=1:nt
     
     % Convolve with gaussian via pointwise multiplication in frequency domain
     if ~useGPU
-        Ufft = E2.*Ufft;
-                
-        if exist('DFUfft','var') % blur with the diffusion term
-           Ufft = squeeze(DFUfft(k,:,:)).* Ufft;
-        end        
+        Ufft = E2.*Ufft;                       
     else
-        Ufft_gpu = E2_gpu .* Ufft_gpu;
-        
-        if exist('DFUfft_gpu','var')
-           Ufft_gpu = squeeze(DFUfft_gpu(k,:,:)).*Ufft_gpu; 
-        end
+        Ufft_gpu = E2_gpu .* Ufft_gpu;        
     end
     
     % Back into time domain
