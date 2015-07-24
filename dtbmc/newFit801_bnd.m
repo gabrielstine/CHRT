@@ -103,6 +103,10 @@ notabs_flag = opt.isChoiceVariableDuration;
 % basing on the assumption that time unit is millisecond. Thus there needs
 % to convert 'theta' parameter properly by a factor of sqrt(1E3) before
 % computation.
+% Spectral_dtbAA method assumes that the default standard deviation of
+% drift is 1 when time unit is second while both Monte Carlo method and FP4 
+% assumes 1 for millisecond. This is caused by different normalization
+% method applied. 
 switch opt.fitType    
     case 'Monte Carlo'        
         P = mckernel(drift,t,Bup,Blo,y0,dfu,rngSeed,notabs_flag,useGPU);
