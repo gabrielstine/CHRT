@@ -342,6 +342,11 @@ fitOptions.optMethod = 'fmincon'
 fitOptions.dt = 1.0E-3
 fitOptions.tMax = 5.0
 
+% By default, variable duration choice fitting is not enabled. To do 
+% variable duration choice fitting, set
+
+fitOptions.isChoiceVariableDuration = true;
+
 % If preferring to plot the iteration results during iteration, 'isPlotIter' 
 % field can be set to true. To start DTB fit, call DTBFIT function direcly 
 % by supplying fitting data and fitting options. The fitting result is 
