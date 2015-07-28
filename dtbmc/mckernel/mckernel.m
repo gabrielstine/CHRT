@@ -65,7 +65,7 @@ if nargin < 7 || ~exist('useGPU','var')
 end
 
 if nargin < 8 || ~exist('trials','var')
-    trials = nt * 5;
+    trials = nt;
 end
 
 % Expand flat bounds.
