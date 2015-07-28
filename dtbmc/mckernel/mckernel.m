@@ -1,11 +1,11 @@
 function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
-%MCKERNEL kernel of Monte Carlo simulation for MCFIT fitting
+%MCKERNEL Monte Carlo simulation kernel for MCFIT fitting
 %
 % D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
 %
-% This Monte Carlo Simulation kernel is a dual of spectral_dtb function, gives 
-% 'fake' spectral solutions to bounded drift diffusion and can handle arbitrary 
-% changing bounds.
+% This kernel applies Monte Carlo method to simulate the accumulation
+% of decision information in each trial and calculate the probability
+% distribution as spectral_dtbAA & FP4 methods. 
 %
 % where (all inputs in SI units)
 %   'drift' is the vector of drift rates,
@@ -32,6 +32,10 @@ function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trial
 %       at each time (ends at D.up.p), 
 %   and 
 %   the '.lo' vesions as well,
+%
+%   'D.notabs.pos_t(drifts,t)' is the probability of not being absorbed at 
+%       (y>0),
+%
 %   'D.drifts' is the drifts used,
 %   'D.bounds' is the bounds used,
 %   'D.t' is the time used,
@@ -41,18 +45,11 @@ function D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trial
 
 % Copyright 2014 Jian Wang
 
-if nargin < 7 || ~exist('useGPU','var')
-    useGPU = false;
-end
-
-if nargin < 8 || ~exist('trials','var')
-    trials = 2000;
-end
-
-% In theory, Monte Carlo simulation is developed basing on the assumption
-% that the standard deviation of drift rate is 1 in 1 millisecond. Thus all
-% the fitting parameters are corresponding value when time is in unit of
-% second, and need to be converted for time in unit of millisecond.
+% This Monte Carlo simulation is developed basing on the assumption that
+% the standard deviation of drift rate is 1 in 1 millisecond and time is in
+% the unit of 1 millisecond. Since all the fitting parameters are  
+% corresponding value when time is in unit of second, all parameters need
+% to be converted when time is in unit of millisecond.
 drift = drift / sqrt(1000);
 Bup = Bup * sqrt(1000);
 Blo = Blo * sqrt(1000);
@@ -60,22 +57,18 @@ y0 = y0 * sqrt(1000);
 sigma = sigma / sqrt(1000);
 
 nt = length(t);
-dt = (t(2) - t(1))*1000; % millisecond.
+dt = (t(2) - t(1)) * 1000; % millisecond.
 nd = length(drift);
 
-% set random number generator seed
-if useGPU
-    parallel.gpu.rng(rngseed);
-else
-    rng(rngseed); 
-    % For CPU, pre-generate random number matrix for reuse
-    persistent rndcloud; %#ok<TLEV>
-    if isempty(rndcloud)
-        rndcloud = randn(nt-1,trials,nd);
-    end                
+if nargin < 7 || ~exist('useGPU','var')
+    useGPU = false;
 end
 
-% Expand flat bounds
+if nargin < 8 || ~exist('trials','var')
+    trials = nt * 5;
+end
+
+% Expand flat bounds.
 if numel(Bup)==1 
     Bup = repmat(Bup,nt,1);
 end
@@ -84,12 +77,24 @@ if numel(Blo)==1
     Blo = repmat(Blo,nt,1);
 end
 
-D = struct('drift',drift,...
+% Set random number generator seed.
+if useGPU
+    parallel.gpu.rng(rngseed);
+else
+    rng(rngseed); 
+    % Generate random number matrix for reuse.
+    persistent rndPersistent; %#ok<TLEV>
+    if isempty(rndPersistent)
+        rndPersistent = randn(nt-1,trials,nd);
+    end                
+end
+
+D = struct('drift',drift * sqrt(1000),...
     't',t,...
-    'Bup',Bup,...
-    'Blo',Blo,...
-    'y0',y0,...
-    'sigma',sigma,...
+    'Bup',Bup / sqrt(1000),...
+    'Blo',Blo / sqrt(1000),...
+    'y0',y0 / sqrt(1000),...
+    'sigma',sigma * sqrt(1000),...
     'rngseed',rngseed,...
     'useGPU',useGPU,...
     'trials',trials);
@@ -98,7 +103,7 @@ D = struct('drift',drift,...
 % the time step size is less than 1 millisecond, the standard deviation for
 % each time step has to be multipled by sqrt(dt) so that the total variance
 % for all the drifts in 1 millisecond will be equal to the standard
-% deviation of 1 single one-millisecond long drift.
+% deviation of 1 single one-millisecond-long drift.
 drift = drift * dt;
 sigma = sigma * sqrt(dt);
 
@@ -148,7 +153,7 @@ switch accelerator
         D.lo.pdf_t = transpose(gather(lo_pdf_t_gpu));
     
     case 'CPU'
-        up_pdf_t = zeros(nt,nd); % pre-allocate
+        up_pdf_t = zeros(nt,nd);
         lo_pdf_t = zeros(nt,nd);
         
         if notabs_flag
@@ -159,7 +164,7 @@ switch accelerator
         BloMtx = repmat(Blo',1,trials);
                 
         for n1 = 1:nd                        
-            dftForce = rndcloud(:,:,n1) * sigma(n1) + drift(n1);
+            dftForce = rndPersistent(:,:,n1) * sigma(n1) + drift(n1);
             dftSum = [zeros(1,trials); cumsum(dftForce,1)] + y0;
                                                                        
             dftBup = dftSum >= BupMtx;
@@ -169,10 +174,10 @@ switch accelerator
             hitLo = zeros(nt,1);
             
             for n2 = 1:trials
-                iu = find(dftBup(:,n2),1,'first'); % index of hitting up bound
-                il = find(dftBlo(:,n2),1,'first'); % index of hitting lo bound
+                iu = find(dftBup(:,n2),1,'first'); % Index of hitting up bound.
+                il = find(dftBlo(:,n2),1,'first'); % Index of hitting lo bound.
                 
-                % Update hitting bound record.
+                % Update bound hitting record.
                 if ~isempty(iu) && isempty(il)
                     hitUp(iu) = hitUp(iu) + 1;
                     
@@ -221,8 +226,8 @@ end
 D.up.p = sum(D.up.pdf_t,2);
 D.lo.p = sum(D.lo.pdf_t,2);    
 
-D.up.mean_t = transpose(t'*D.up.pdf_t')./D.up.p;
-D.lo.mean_t = transpose(t'*D.lo.pdf_t')./D.lo.p;
+D.up.mean_t = transpose(t'*D.up.pdf_t') ./ D.up.p;
+D.lo.mean_t = transpose(t'*D.lo.pdf_t') ./ D.lo.p;
 
 D.up.cdf_t = cumsum(D.up.pdf_t,2);
 D.lo.cdf_t = cumsum(D.lo.pdf_t,2);

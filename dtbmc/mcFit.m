@@ -13,3 +13,5 @@ function fitResult = mcFit(data,fitOptions,varargin)
 fitOptions.fitType = 'Monte Carlo';
 % DTBMC kernel simulates both DTB & MC.
 fitResult = dtbmc(data,fitOptions,varargin{:});
+clear mckernel;
+
