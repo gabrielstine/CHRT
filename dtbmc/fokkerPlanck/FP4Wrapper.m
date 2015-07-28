@@ -65,7 +65,7 @@ for i = 1 : length(adv)
     [~, ~, Ptb, Pg0, ~] = FP4(xmesh, uinit, mu, sigma, b_change, b_margin(i,:), dt);    
     P.lo.pdf_t(i,:) = Ptb(2:end,1);
     P.up.pdf_t(i,:) = Ptb(2:end,2);
-    P.notabs.pos_t(i,:) = Pg0;            
+    P.notabs.pos_t(i,:) = Pg0(2:end);            
 end
 
 

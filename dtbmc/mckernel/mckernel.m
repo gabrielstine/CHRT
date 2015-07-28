@@ -182,26 +182,26 @@ switch accelerator
                     hitUp(iu) = hitUp(iu) + 1;
                     
                     if notabs_flag
-                       pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n1)>0);                    
+                       pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);                    
                     end                    
                 elseif isempty(iu) && ~isempty(il)
                     hitLo(il) = hitLo(il) + 1;
                     
                     if notabs_flag
-                       pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n1)>0);                     
+                       pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);                     
                     end
                 elseif ~isempty(iu) && ~isempty(il)
                     if iu <= il
                         hitUp(iu) = hitUp(iu) + 1;
                         
                         if notabs_flag
-                            pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n1)>0);
+                            pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);
                         end
                     else
                         hitLo(il) = hitLo(il) + 1;
                         
                         if notabs_flag
-                            pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n1)>0);
+                            pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);
                         end
                     end
                 end                
@@ -209,12 +209,12 @@ switch accelerator
             
             up_pdf_t(:,n1) = hitUp / trials;
             lo_pdf_t(:,n1) = hitLo / trials;       
-            
-            if notabs_flag
-               pos_t = pos_t / trials; 
-            end
-        end                                     
+        end
         
+        if notabs_flag
+            pos_t = pos_t / trials;
+        end
+                                                     
         D.up.pdf_t = up_pdf_t';
         D.lo.pdf_t = lo_pdf_t';
         
