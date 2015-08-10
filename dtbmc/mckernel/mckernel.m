@@ -117,19 +117,17 @@ end
 switch accelerator
     case 'GPU'
         if ~notabs_flag  
-           % Build GPU kernel to find hit-bound only.
-           k1 = parallel.gpu.CUDAKernel('find1HitBnd.ptx','find1HitBnd.cu');
-           k1.ThreadBlockSize = [512, 1, 1];
-           blkSizeX = int32(ceil(trials / k1.ThreadBlockSize(1)));
-           k1.GridSize = [blkSizeX, 1, 1];        
+           % Build GPU kernel to find only bound hit.
+           k1 = parallel.gpu.CUDAKernel('findBndHit.ptx','findBndHit.cu','withoutPos');                  
         else     
-           % Build GPU kernel to find both hit-bound & postive P.
-           k2 = parallel.gpu.CUDAKernel('find1HitBndPos.ptx','find1HitBndPos.cu');
-           k2.ThreadBlockSize = [512, 1, 1];
-           blkSizeX = int32(ceil(trials / k2.ThreadBlockSize(1)));
-           k2.GridSize = [blkSizeX, 1, 1];
+           % Build GPU kernel to find both bound hit and postive pdf.
+           k1 = parallel.gpu.CUDAKernel('findBndHit.ptx','findBndHit.cu','withPos');
         end
         
+        k1.ThreadBlockSize = [512, 1, 1];
+        gridSizeX = int32(ceil(trials / k1.ThreadBlockSize(1)));
+        k1.GridSize = [gridSizeX, 1, 1];
+               
         % _gpu subfix implies array allocated on GPU memory.
         up_pdf_t_gpu = gpuArray.zeros(nt,nd);
         lo_pdf_t_gpu = gpuArray.zeros(nt,nd);
@@ -141,7 +139,7 @@ switch accelerator
         BupMtx_gpu = repmat(gpuArray(Bup'),1,trials);                    
         BloMtx_gpu = repmat(gpuArray(Blo'),1,trials);
         
-        for n1 = 1:nd % drift rate            
+        for n1 = 1:nd            
             dftForce_gpu = gpuArray.randn(nt-1,trials) * sigma(n1) + drift(n1);                                               
             dftSum_gpu = [gpuArray.zeros(1,trials); cumsum(dftForce_gpu,1)] + y0;
                                                 
@@ -160,7 +158,7 @@ switch accelerator
                [hitUp_gpu, hitLo_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
                    dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials));
             else
-               [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k2,dftBup_gpu,hitUp_gpu,...
+               [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
                    dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials),...
                    dftSum_gpu,pos_gpu); 
             end
