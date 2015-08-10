@@ -116,15 +116,28 @@ end
 
 switch accelerator
     case 'GPU'
-        k1 = parallel.gpu.CUDAKernel('find1HitBnd.ptx','find1HitBnd.cu');
-        k1.ThreadBlockSize = [512, 1, 1];
-        blkSizeX = int32(ceil(trials / k1.ThreadBlockSize(1)));        
-        k1.GridSize = [blkSizeX, 1, 1];
+        if ~notabs_flag  
+           % Build GPU kernel to find hit-bound only.
+           k1 = parallel.gpu.CUDAKernel('find1HitBnd.ptx','find1HitBnd.cu');
+           k1.ThreadBlockSize = [512, 1, 1];
+           blkSizeX = int32(ceil(trials / k1.ThreadBlockSize(1)));
+           k1.GridSize = [blkSizeX, 1, 1];        
+        else     
+           % Build GPU kernel to find both hit-bound & postive P.
+           k2 = parallel.gpu.CUDAKernel('find1HitBndPos.ptx','find1HitBndPos.cu');
+           k2.ThreadBlockSize = [512, 1, 1];
+           blkSizeX = int32(ceil(trials / k2.ThreadBlockSize(1)));
+           k2.GridSize = [blkSizeX, 1, 1];
+        end
         
-        % _gpu subfix implies array allocated on GPU memory
+        % _gpu subfix implies array allocated on GPU memory.
         up_pdf_t_gpu = gpuArray.zeros(nt,nd);
         lo_pdf_t_gpu = gpuArray.zeros(nt,nd);
-                
+        
+        if notabs_flag
+           pos_t_gpu = gpuArray.zeros(nt,nd); 
+        end
+        
         BupMtx_gpu = repmat(gpuArray(Bup'),1,trials);                    
         BloMtx_gpu = repmat(gpuArray(Blo'),1,trials);
         
@@ -135,22 +148,40 @@ switch accelerator
             dftBup_gpu = dftSum_gpu >= BupMtx_gpu;                        
             dftBlo_gpu = dftSum_gpu <= BloMtx_gpu;
                         
-            clear dftSum_gpu dftForce_gpu
+            clear dftForce_gpu
             hitUp_gpu = gpuArray.zeros(nt,trials);                        
             hitLo_gpu = gpuArray.zeros(nt,trials);
             
-            [hitUp_gpu, hitLo_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
-                dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials));
+            if notabs_flag
+               pos_gpu = gpuArray.zeros(nt,trials); 
+            end
+            
+            if ~notabs_flag                
+               [hitUp_gpu, hitLo_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
+                   dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials));
+            else
+               [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k2,dftBup_gpu,hitUp_gpu,...
+                   dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials),...
+                   dftSum_gpu,pos_gpu); 
+            end
             
             hitUp_gpu = cumsum(hitUp_gpu,2);
-            hitLo_gpu = cumsum(hitLo_gpu,2);
-            
+            hitLo_gpu = cumsum(hitLo_gpu,2);            
             up_pdf_t_gpu(:,n1) = hitUp_gpu(:,end) / trials;            
             lo_pdf_t_gpu(:,n1) = hitLo_gpu(:,end) / trials;                        
+            
+            if notabs_flag
+               pos_gpu = cumsum(pos_gpu,2);
+               pos_t_gpu(:,n1) = pos_gpu(:,end) / trials;
+            end        
         end
                 
         D.up.pdf_t = transpose(gather(up_pdf_t_gpu));        
         D.lo.pdf_t = transpose(gather(lo_pdf_t_gpu));
+        
+        if notabs_flag
+           D.notabs.pos_t = transpose(gather(pos_t_gpu));
+        end
     
     case 'CPU'
         up_pdf_t = zeros(nt,nd);
