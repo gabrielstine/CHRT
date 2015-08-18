@@ -1,4 +1,4 @@
-function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials,cov)
+function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,cov,trials)
 %MCKERNEL Monte Carlo simulation kernel for MCFIT fitting
 %
 % D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
@@ -18,8 +18,8 @@ function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,tri
 %   'notabs_flag' is flag to calculate probability of not absorped drift
 %       above zero,
 %   'useGPU' is a flag to use GPU for calculation or not, by default, false,
+%   'cov' is 2 x 2 covariance matrix,
 %   'trials' is the number of trials to compute.
-%   'cov' is 2 x 2 covariance matrix.
 %
 %   and
 %
@@ -65,7 +65,7 @@ if nargin < 7 || ~exist('useGPU','var')
     useGPU = false;
 end
 
-if nargin < 8 || ~exist('trials','var')
+if nargin < 9 || ~exist('trials','var')
     trials = nt;
 end
 
@@ -142,7 +142,7 @@ switch accelerator
         Blo_gpu = gpuArray(Blo');
         
         for n1 = 1:nd            
-            randpool_gpu = gpuArray.randn((nt-1)*3,trials) * sigma(n1);                                               
+            randpool_gpu = gpuArray.randn(nt*3,trials) * sigma(n1);                                               
 %             dftSum_gpu = [gpuArray.zeros(1,trials); cumsum(dftForce_gpu,1)] + y0;
 %                                                 
 %             dftBup_gpu = dftSum_gpu >= BupMtx_gpu;                        
@@ -159,7 +159,7 @@ switch accelerator
             if ~notabs_flag                
                [hitUp_gpu, hitLo_gpu] = feval(k1,randpool_gpu,...
                    Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
-                   int32(nt-1),int32(trials),y0,drift(n1),cov(2));
+                   int32(nt),int32(trials),y0,drift(n1),cov(2));
             else
 %                [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
 %                    dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials),...
@@ -184,75 +184,75 @@ switch accelerator
 %            D.notabs.pos_t = transpose(gather(pos_t_gpu));
 %         end
     
-    case 'CPU'
-        up_pdf_t = zeros(nt,nd);
-        lo_pdf_t = zeros(nt,nd);
-        
-        if notabs_flag
-           pos_t = zeros(nt,nd); 
-        end
-        
-        BupMtx = repmat(Bup',1,trials);
-        BloMtx = repmat(Blo',1,trials);
-                
-        for n1 = 1:nd                        
-            dftForce = rndPersistent(:,:,n1) * sigma(n1) + drift(n1);
-            dftSum = [zeros(1,trials); cumsum(dftForce,1)] + y0;
-                                                                       
-            dftBup = dftSum >= BupMtx;
-            dftBlo = dftSum <= BloMtx;            
-            
-            hitUp = zeros(nt,1);
-            hitLo = zeros(nt,1);
-            
-            for n2 = 1:trials
-                iu = find(dftBup(:,n2),1,'first'); % Index of hitting up bound.
-                il = find(dftBlo(:,n2),1,'first'); % Index of hitting lo bound.
-                
-                % Update bound hitting record.
-                if ~isempty(iu) && isempty(il)
-                    hitUp(iu) = hitUp(iu) + 1;
-                    
-                    if notabs_flag
-                       pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);                    
-                    end                    
-                elseif isempty(iu) && ~isempty(il)
-                    hitLo(il) = hitLo(il) + 1;
-                    
-                    if notabs_flag
-                       pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);                     
-                    end
-                elseif ~isempty(iu) && ~isempty(il)
-                    if iu <= il
-                        hitUp(iu) = hitUp(iu) + 1;
-                        
-                        if notabs_flag
-                            pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);
-                        end
-                    else
-                        hitLo(il) = hitLo(il) + 1;
-                        
-                        if notabs_flag
-                            pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);
-                        end
-                    end
-                end                
-            end
-            
-            up_pdf_t(:,n1) = hitUp / trials;
-            lo_pdf_t(:,n1) = hitLo / trials;       
-        end
-        
-        if notabs_flag
-            pos_t = pos_t / trials;
-        end
-                                                     
-        D.up.pdf_t = up_pdf_t';
-        D.lo.pdf_t = lo_pdf_t';
-        
-        if notabs_flag
-           D.notabs.pos_t = pos_t'; 
-        end
+%     case 'CPU'
+%         up_pdf_t = zeros(nt,nd);
+%         lo_pdf_t = zeros(nt,nd);
+%         
+%         if notabs_flag
+%            pos_t = zeros(nt,nd); 
+%         end
+%         
+%         BupMtx = repmat(Bup',1,trials);
+%         BloMtx = repmat(Blo',1,trials);
+%                 
+%         for n1 = 1:nd                        
+%             dftForce = rndPersistent(:,:,n1) * sigma(n1) + drift(n1);
+%             dftSum = [zeros(1,trials); cumsum(dftForce,1)] + y0;
+%                                                                        
+%             dftBup = dftSum >= BupMtx;
+%             dftBlo = dftSum <= BloMtx;            
+%             
+%             hitUp = zeros(nt,1);
+%             hitLo = zeros(nt,1);
+%             
+%             for n2 = 1:trials
+%                 iu = find(dftBup(:,n2),1,'first'); % Index of hitting up bound.
+%                 il = find(dftBlo(:,n2),1,'first'); % Index of hitting lo bound.
+%                 
+%                 % Update bound hitting record.
+%                 if ~isempty(iu) && isempty(il)
+%                     hitUp(iu) = hitUp(iu) + 1;
+%                     
+%                     if notabs_flag
+%                        pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);                    
+%                     end                    
+%                 elseif isempty(iu) && ~isempty(il)
+%                     hitLo(il) = hitLo(il) + 1;
+%                     
+%                     if notabs_flag
+%                        pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);                     
+%                     end
+%                 elseif ~isempty(iu) && ~isempty(il)
+%                     if iu <= il
+%                         hitUp(iu) = hitUp(iu) + 1;
+%                         
+%                         if notabs_flag
+%                             pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);
+%                         end
+%                     else
+%                         hitLo(il) = hitLo(il) + 1;
+%                         
+%                         if notabs_flag
+%                             pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);
+%                         end
+%                     end
+%                 end                
+%             end
+%             
+%             up_pdf_t(:,n1) = hitUp / trials;
+%             lo_pdf_t(:,n1) = hitLo / trials;       
+%         end
+%         
+%         if notabs_flag
+%             pos_t = pos_t / trials;
+%         end
+%                                                      
+%         D.up.pdf_t = up_pdf_t';
+%         D.lo.pdf_t = lo_pdf_t';
+%         
+%         if notabs_flag
+%            D.notabs.pos_t = pos_t'; 
+%         end
 end
 
 D.up.p = sum(D.up.pdf_t,2);
