@@ -1,5 +1,5 @@
-classdef dtbMCOptions
-    %DTBMCOPTIONS Diffusiont-To-Bound & Monte Carlo fitting options.
+classdef dtbMC2DOptions
+    %DTBMC2DOPTIONS 2D Diffusiont-To-Bound & Monte Carlo fitting options.
     %
     %   thetaKey - Cell row vector of strings to identify each theta fitting    
     %       parameter.
@@ -56,7 +56,8 @@ classdef dtbMCOptions
             'tndrsd',... % Standard deviation of rightward non-decision time.
             'tndl',... % Leftward non-decision time.
             'tndlsd',... % Standard deviation of leftward non-decision time.
-            'y0'}; % Initial distribution position.       
+            'y0',... % Initial distribution position.
+            'Rho'}; % Covariance factor.
         thetaUpLimit@double; % Up limit of theta field.
         theta@double;
         thetaLowerLimit@double; % Lower limit of theta field.
@@ -86,8 +87,8 @@ classdef dtbMCOptions
         tMax@double % Max simulation time.
         
         rngSeed; % Random number generator seed.        
-        NumWorkers@double; % Number of parallel computation workers.                
-        isUseGPU@logical = false; % Whether to use GPU for computing or not.                           
+        NumWorkers@double = 1; % Number of parallel computation workers.                
+        isUseGPU@logical = true; % Whether to use GPU for computing or not.                           
     end                                                         
 end
 

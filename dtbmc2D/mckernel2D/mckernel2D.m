@@ -1,7 +1,7 @@
-function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,cov,trials)
-%MCKERNEL Monte Carlo simulation kernel for MCFIT fitting
+function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,Roh,trials)
+%MCKERNEL2D Monte Carlo simulation kernel for MCFIT fitting
 %
-% D =  mckernel(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,trials)
+% D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,Roh,trials)
 %
 % This kernel applies Monte Carlo method to simulate the accumulation
 % of decision information in each trial and calculate the probability
@@ -18,7 +18,7 @@ function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,cov
 %   'notabs_flag' is flag to calculate probability of not absorped drift
 %       above zero,
 %   'useGPU' is a flag to use GPU for calculation or not, by default, false,
-%   'cov' is 2 x 2 covariance matrix,
+%   'Roh' is 2 x 2 covariance matrix,
 %   'trials' is the number of trials to compute.
 %
 %   and
@@ -99,7 +99,7 @@ D = struct('drift',drift * sqrt(1000),...
     'rngseed',rngseed,...
     'useGPU',useGPU,...
     'trials',trials,...
-    'cov',cov);
+    'Roh',Roh);
 
 % The standard deviation in 1 millisecond is assumed to 1 technically. If
 % the time step size is less than 1 millisecond, the standard deviation for
@@ -159,7 +159,7 @@ switch accelerator
             if ~notabs_flag                
                [hitUp_gpu, hitLo_gpu] = feval(k1,randpool_gpu,...
                    Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
-                   int32(nt),int32(trials),y0,drift(n1),cov(2));
+                   int32(nt),int32(trials),y0,drift(n1),Roh);
             else
 %                [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
 %                    dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials),...

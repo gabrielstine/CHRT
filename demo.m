@@ -1,8 +1,8 @@
-%
-% Examples of using Choice & Reaction Time (CHRT) Matlab toolbox to fit and 
+
+% Demo of using Choice & Reaction Time (CHRT) Matlab toolbox to fit and 
 % generate 1D Choice & Recation Time data.
 %
-% By Shadlen Lab, Columbia University in the city of New York.
+% 2015 Shadlen Lab, Columbia University in the city of New York.
 %
 %
 % In this Choice & Reaction Time toolbox, 1D fitting data is sorted by trial 
@@ -10,14 +10,15 @@
 %
 %   [signed coherence, choice, reation time]. 
 %
-% A sample data has been provided for fitting. First load and check the sample 
-% data. Place a break point at line blow and step through this demo.
+% A sample data has been provided for fitting. First load and check the 
+% sample data. Place a break point at the line blow and step through this 
+% demo.
 
 load data.mat
 whos
 data
 
-% This sample data is a 3-column matrix. The first column is 'signed
+% This sample data is in a 3-column matrix. The first column is 'signed
 % coherence' in the range of [-0.512, 0.512], of which negative value means
 % the dots moves toward left and positive value means the dots moves toward
 % right. The second column is 'choice', of which '1' means choosing right
@@ -25,6 +26,7 @@ data
 % second.
 
 %% Logit Regression Fit.
+
 % For the provided sample data, the unique signed coherence and the 
 % corresponding probability of making rightward choice satisfy the Logit
 % Regression profile,
@@ -33,8 +35,8 @@ data
 %   x1 = unique signed coherence,
 %   pr = probability of making rightward choice.
 %
-% To apply Logit Regression Fit, simply call LOGITFIT function with 
-% sample data as input. This function will calculate the probability of
+% To do Logit Regression Fit, simply call LOGITFIT function with 
+% sample data input. This function will calculate the probability of
 % making rightward choice and call GLMFIT function to perform the actual fit.
 
 [b,dev,stats,prData] = logitFit(data)
@@ -47,31 +49,31 @@ data
 %
 % Of those 4 output variables, b, dev & stats are the same as the output
 % variables of GLMFIT function. In the above Logit Regression profile, b1/b2 
-% is called 'logit derived coherence bias' and can be used in the following 
+% is 'logit derived coherence bias' and can be further used in the following 
 % computations. 
 
 logitDerivedCohBias = b(1) / b(2)
 
-% prData can be used in plot. To visualize Logit Regression fit curve and 
-% the proportion rightward choice data, call the Logit Regression Fit plot
-% function by supplying the proportion rightward choice data and the
-% coefficient estimate vector. In the plot, the blue dots stand for the
-% acutal data supplied and the cyan color curve for the fitting data. The 
-% plot function also returns the figure handle which can be used to modify
-% the figure. User should feel free to generate figures with their own
-% preferences.
+% To visualize Logit Regression fit curve and the proportion rightward 
+% choice data, call the Logit Regression Fit plot function as below. In the 
+% plot, the blue dots stand for the acutal data supplied and the cyan color 
+% curve for the fitting data. The plot function also returns the figure 
+% handle which can be used to modify the figure. User should feel free to 
+% generate figures with their own preferences.
 
 fh1 = logitFitPlot(prData, b)
 
 %% Weibull fit.
+
 % The unsigned coherence and the corresponding probability of making correct 
-% choice also satisfy Weibull profile,
+% choice satisfy Weibull profile,
 %
 %   pc = 1 - 0.5 * exp(-(x/alpha).^beta)   
 %
 % alpha & beta are the threshold and slope parameters.
+%
 % To apply Weibull fit, call WEIBULLFIT function by supplying 'data' as
-% the input. This WEIBULLFIT function returns 5 outputs which are
+% the input. This WEIBULLFIT function returns 5 outputs that are
 %   alpha = threshold parameter,
 %   beta = slope parameter,
 %   llik = log likelihood of obtaining data given the fit,
@@ -93,6 +95,7 @@ fh1 = logitFitPlot(prData, b)
 fh2 = weibullFitPlot(alpha,beta,pcData)
 
 %% Flat Bound fit.
+
 % As described in book "Bayesian Brain: Probabilistic Approaches to Neural 
 % Coding" edited by Kenji Doya, Shin Ishii, Alexandre Pouget and Rajesh PN.,
 % Rao, Chapter 10, "The speed and accuracy of a simple perceptual decision:
@@ -143,7 +146,7 @@ fitOptions.theta = [0.457*sqrt(1E3),25/sqrt(1E3), 0.3,0.3, NaN,NaN,NaN]
 
 % This call will condense the raw data first, calcute the reaction time for
 % each signed coherence, then fit using default FMINSEARCH function and
-% outputs
+% outputs are
 %
 %   thetaFit = fitted theta value vector,
 %   err = the value of the objective function of fminsearch,
@@ -180,20 +183,25 @@ fh4 = flatBoundFitPlot(thetaFit,fitOptions,'isPlotErrorBar',false)
 % FLATBOUNDFIT, FLATBOUNDFITOPTIONS and FLATBOUNDFITPLOT.
 
 %% Monte Carlo Simulation.
+
 % As described in book "Bayesian Brain: Probabilistic Approaches to Neural 
 % Coding" edited by Kenji Doya, Shin Ishii, Alexandre Pouget and Rajesh PN.,
 % Rao, Chapter 10, "The speed and accuracy of a simple perceptual decision:
 % A mathematical primer", the Diffusion-To-Bound framework can be used to
 % simulate the accumulation of evidence and the process of decision making. 
-% In a similar way, Monte Carlo Method can be used to do this work.
+% In a similar way, Monte Carlo Method can be used to simulate this process.
 % Furthermore, Monte Carlo Method can be utilized to generate 'fake' Choice
 % & Reaction Time data, which else could be fitted by Logit, Weibull & Flat
 % Bound Fit to verify the correctness of this method.
 %
 % The drift term (mu) is
+%
 %   kappa*(scoh + cohBias) + uBias
+%
 % and the standard deviation term is
+%
 %   sqrt(sigma^2 + bSigma * abs(scoh))
+%   where
 %       cohBias = coherence bias or motion strength bias,
 %       uBias = drift force bias,
 %       sigma & bSigma are 2 parameters to estimate the standard deviation,
@@ -210,12 +218,14 @@ scoh = [-0.512,-0.256,-0.128,-0.064,-0.032,...
 % Then create Monte Carlo simulation options structure and set 'theta' field
 % values. 'theta' field specifies the parameters to calculate the drift term 
 % and the standard deviation term. 'thetaKey' field explains the meaning of
-% each 'theta' parameter and are,
+% each 'theta' parameter and is,
 %
 % 'kappa','cohBias','uBias','sigma','bSigma','tndr','tndrsd','tndl','tndlsd'
 
 simOptions = mcSimOptions
-simOptions.theta = [0.457*sqrt(1E3), 0.0,0.0, 1.0*sqrt(1E3),0.5*sqrt(1E3), 0.3,0.0, 0.3,0.0]
+
+simOptions.theta = [0.457*sqrt(1E3), 0.0,0.0, 1.0*sqrt(1E3),0.5*sqrt(1E3),...
+    0.3,0.0, 0.3,0.0]
 
 % The up- & lower- boundary profiles also need to be specified. 6
 % predefined boundary profiles are made available and listed in
@@ -253,37 +263,41 @@ simOptions.trials = 1.0E4
 % 'simDataDyn' is the calculated simulation data. As shown, signed
 % coherence is now dynamic value and no longer distinct repeated value.
 
-%% Diffusion-to-Bound & Monte Carlo fit.
-% As mentioned above, both Diffusion to Bound method and Monte Carlo Method
-% can be used to fit data. Same as Monte Carlo Simulaiton, the drift term (mu) 
-% is
+%% 1D Diffusion-to-Bound fitting.
+
+% As mentioned above, with Diffusion to Bound model, FFT, Finite Difference
+% and Monte Carlo Methods can be applied to fit data. Same as Monte Carlo 
+% Simulaiton, the drift term (mu) is
+%
 %   kappa*(scoh + cohBias) + uBias
+%
 % and the standard deviation term is
+%
 %   sqrt(sigma^2 + bSigma * abs(scoh))
+%   where
 %       scoh is signed coherence,
 %       cohBias is coherence bias or motion strength bias,
 %       uBias is drift force bias,
-%       sigma & bSigma are 2 parameters to estimate the standard deviation,
-%           typically choose 1.0 and 0.5.
+%       sigma & bSigma are 2 parameters to estimate the standard deviation.
+%
 % To set up Diffusion to Bound fit, first create fitting options variable,
 
 fitOptions = dtbMCOptions
 
-% This 'fitOptions' variable is used by both Diffusion to Bound and Monte
-% Carlo simulations, and contains several seperate groups of fields.
-% The 1st group of fields, 'thetaKey', 'thetaUpLimit', 'theta' &
-% 'thetaLowerLimit', specifies key of each parameter, upper & lower limit,
-% and initial parameter value to calculate drift term and standard deviation 
-% term. DTBMCOPTIONS annotates these fields in detail and the keys of these 
-% theta parameters are repeated again,
+% This 'fitOptions' variable is used by all three different computation
+% methods and contains several seperate groups of fields. The 1st group of 
+% fields, 'thetaKey', 'thetaUpLimit', 'theta' & 'thetaLowerLimit', specifies 
+% key of each fitting parameter, upper & lower limit and initial fitting 
+% value. DTBMCOPTIONS explains these fields in detail and the keys of these 
+% theta parameters are simply repeated here,
 %
 % 'kappa',
 % 'cohBias','uBias', 'sigma','bSigma',
 % 'tndr','tndrsd', 'tndl','tndlsd',
 % 'y0'
 %
-% These fields can be assigned as following. If the upper limit equals the
-% corresponding lower limit and initial fitting value, the optimization
+% These fields can be assigned as following. If the upper limit equals both 
+% the corresponding lower limit and initial fitting value, the optimization
 % method will treat this parameter value as fixed and will not optimize it,
 % which is the way used here to avoid fitting known parameter. 
 
@@ -291,10 +305,12 @@ fitOptions.thetaUpLimit = [0.8149*sqrt(1E3),...
     0.0,0.0, 1.0*sqrt(1E3),0.0,...
     3.6170,0.5000, 3.6170,0.5000,...
     0.0]
+
 fitOptions.theta = [0.2716*sqrt(1E3),...
     0.0,0.0, 1.0*sqrt(1E3),0.0,...
     0.2794,0.1190, 0.2794,0.1190,...    
     0.0]
+
 fitOptions.thetaLowerLimit = [0.0,...
     0.0,0.0, 1.0*sqrt(1E3),0.0,...
     0.0,0.01, 0.0,0.01,...
@@ -306,9 +322,9 @@ fitOptions.thetaLowerLimit = [0.0,...
 % string name or function handle in GETFPROFILEFCN, or any user supplied
 % function handle in the same format as samples in GETPROFILEFCN.
 % 'upBoundaryUpLimit', 'upBoundaryParameter' & 'upBoundaryLowerLimit'
-% specifies the up limit, initial fitting value and lower limit of 'b' parameter
-% vector of function handle. There is also 3 corresponding fields for the
-% lower boundary profile.
+% specifies the upper limit, initial fitting value and lower limit of 'b' 
+% parameter vector of function handle. There are also 4 corresponding fields 
+% for the lower boundary profile.
 
 fitOptions.upBoundaryProfile = 'flat'
 fitOptions.upBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
@@ -320,19 +336,19 @@ fitOptions.lowerBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
 fitOptions.lowerBoundaryParameter = [45.7993/sqrt(1E3), 0.0,0.0,0.0,0.0]
 fitOptions.lowerBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
 
-% 'fitType' field is used by internal functions to specify whether DTB
-% or Monte Carlo method is chosen for fitting. No need to set
+% 'fitType' field is used by internal functions to declare whether FFT,
+% Finite Difference or Monte Carlo method is selected. No need to set
 % this field. 'optMethodList' field lists all the available optimization
-% methods. User can set 'optMethod' field to one of them for their own favor. 
+% methods. User can set 'optMethod' field to one of them by their own favor. 
 % By default, if not setting, fminsearchbnd optimization method will be
-% used for optimization. 'fmincon' is the recommended optimization method. 
-% User can start with 'fmincon' and then try other optimization methods.
+% used for optimization. However, 'fmincon' is the recommended optimization 
+% method. User can start with 'fmincon' and try other optimization methods.
 
 fitOptions.optMethod = 'fmincon'
 
 % 'dt' field sets the time step size in fitting. By default, the time step
 % size is 1.0E-3 second. It is better to use a time step not coarser that 
-% this value. 'tMax' is the maximum time that fitting does. 'rngSeed' is the
+% this value. 'tMax' is the maximum value in time axis. 'rngSeed' is the
 % random number generator seed for repeatable random number generation. 
 % 'NumWorkers' is the number of processors that parallel computation utilizes. 
 % It is recommended to use neither more than the maximum processors that 
@@ -342,56 +358,151 @@ fitOptions.optMethod = 'fmincon'
 fitOptions.dt = 1.0E-3
 fitOptions.tMax = 5.0
 
-% By default, variable duration choice fitting is not enabled. To do 
+% By default, variable duration choice fitting is not enabled. To perform 
 % variable duration choice fitting, set
 
 fitOptions.isChoiceVariableDuration = true;
 
-% If preferring to plot the iteration results during iteration, 'isPlotIter' 
-% field can be set to true. To start DTB fit, call DTBFIT function direcly 
+% To start DTB fit using FFT method, call DTBFIT function direcly 
 % by supplying fitting data and fitting options. The fitting result is 
 % returned as a structure containing fitted parameter and standard returns
 % by optimization methods.
 
 fitResult = dtbFit(data,fitOptions)
 
-% When using FP4 (Chang-Cooper Method to solve Fokker-Planck equation) to
-% fit data, time step needs to be smaller. Call FPFIT function as
-% following.
+% When using Finite Difference Method (exactly, Chang-Cooper Method to solve 
+% Fokker-Planck equation) to fit data, time step needs to be finer. Call 
+% FPFIT function as following.
 
 fitOptions.dt = 0.5E-3
 fitResult = fpFit(data,fitOptions)
 
-% For Monte Carlo fit, simply set up the common fit options fields as above.
-% Or just reuse the above fitting options. Notice that, 'y0' parameter in 
-% 'theta' field of fitOptions is only valid for DTB fit, not valid for 
-% Monte Carlo fit. When performing Monte Carlo fitting, simply ignore this
-% 'y0' parameter and set its value to 0. Let's set the optimization method
-% to 'fmincon',
+% When using Monte Carlo method, set the optimization method to 'fmincon'.
 
 fitOptions.optMethod = 'fmincon'
 
-% Then start Monte Carlo fit and call MCFIT function,
+% Then start Monte Carlo fit by calling MCFIT function as
 
 fitResult = mcFit(data,fitOptions)
 
 % Monte Carlo method can be efficiently parallerized by Nvidia GPU accelerator 
 % supported by Matlab. GPU memory is very limited and can be quickly
 % exhausted. It is good to start with coarser time step and shorter
-% durance. And then gradually use finer time stop and longer durance.
+% durance. And then gradually use finer time step and longer durance.
 
 fitOptions.dt = 5.0E-3
 fitOptions.tMax = 3.0
 
-% Since GPU memory is small, only 1 computing process is allowed by default
-% to avoid draining out GPU memory. Set 'isUseGPU' field to true.
+% Since GPU memory is small, only 1 computing process is recommended to 
+% avoid draining out GPU memory. Set 'isUseGPU' field to true.
 
 fitOptions.NumWorkers = 1
 fitOptions.isUseGPU = true
 
-% Finally, start Monte Carlo fitting with GPU,
+% Finally, start Monte Carlo method using GPU with
 
 fitResult = mcFit(data,fitOptions)
+
+%% 2D Diffusion-to-Bound fitting.
+
+% In 2D DTB model, the two competing diffusion races have similar drift 
+% characteristics except that the drift force differed by covariance factor
+% Rho. At any time step, the drift forces of these two competing diffusion
+% races can be expressed as
+%
+% d1 = [(1-abs(Rho)) * nrand(i)   + abs(Rho) * nrand(i+1)] + mu
+% d2 = [(1-abs(Rho)) * nrand(i+2) +     Rho  * nrand(i+1)] - mu
+% where
+%   Rho is covarance factor in covariance matrix [1, Rho; Rho, 1],
+%   nrand is normal random number of zero mean,
+%   mu is the average drift term.
+%
+% Monte Carlo method is the recommended method as the computation load is
+% almost the same since the two competing races share most of the
+% computation. For FFT method, 2D FFT convolution will increase the
+% computation complexity by a factor of mesh grid size (usually this is
+% 512) and costs about 30 seconds for 512 mesh grid size and 500 time
+% steps. While using Monte Carlo method, for even higher resolution grid,
+% it will cost about 0.7 second using Nvidia Telsa K20C GPU which is about
+% 40 times acceleration.
+%
+% To set up 2D Diffusion to Bound fit, first create fitting options variable,
+
+fitOptions = dtbMC2DOptions
+
+% Comparing with 1D fitting options, this 2D fitting options adds an extra
+% term 'Rho' to the end of 'theta' field. The key of 'theta' field becomes
+%
+% 'kappa',
+% 'cohBias','uBias', 'sigma','bSigma',
+% 'tndr','tndrsd', 'tndl','tndlsd',
+% 'y0', 'Rho'
+%
+% Set 'theta' fitting parameter as before,
+
+fitOptions.thetaUpLimit = [0.8149*sqrt(1E3),...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
+    3.6170,0.5000, 3.6170,0.5000,...
+    0.0, -1.0]
+
+fitOptions.theta = [0.2716*sqrt(1E3),...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
+    0.2794,0.1190, 0.2794,0.1190,...    
+    0.0, -1.0]
+
+fitOptions.thetaLowerLimit = [0.0,...
+    0.0,0.0, 1.0*sqrt(1E3),0.0,...
+    0.0,0.01, 0.0,0.01,...
+    0.0, -1.0]
+
+% Then set the 2nd group of boundary fitting parameter as before. The 2
+% competing races will use the same boundary parameters.
+
+fitOptions.upBoundaryProfile = 'flat'
+fitOptions.upBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
+fitOptions.upBoundaryParameter = [45.7993/sqrt(1E3), 0.0,0.0,0.0,0.0]
+fitOptions.upBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
+
+fitOptions.lowerBoundaryProfile = 'flat'
+fitOptions.lowerBoundaryUpLimit = [Inf, 0.0,0.0,0.0,0.0]
+fitOptions.lowerBoundaryParameter = [45.7993/sqrt(1E3), 0.0,0.0,0.0,0.0]
+fitOptions.lowerBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
+
+% Set fitting method, time step size, etc.
+
+fitOptions.optMethod = 'fmincon'
+fitOptions.dt = 1.0E-3
+fitOptions.tMax = 5.0
+
+% Finally, start 2D Monte Carlo method using GPU with
+
+fitResult = mc2DFit(data,fitOptions)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
