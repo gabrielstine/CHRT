@@ -18,7 +18,7 @@ function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,Roh
 %   'notabs_flag' is flag to calculate probability of not absorped drift
 %       above zero,
 %   'useGPU' is a flag to use GPU for calculation or not, by default, false,
-%   'Roh' is 2 x 2 covariance matrix,
+%   'Roh' is the (1,1) covariance in a 2 x 2 covariance matrix,
 %   'trials' is the number of trials to compute.
 %
 %   and
@@ -44,7 +44,7 @@ function D =  mckernel2D(drift,t,Bup,Blo,y0,sigma,rngseed,notabs_flag,useGPU,Roh
 %   'D.trials' is the trials for each drift.
 %
 
-% Copyright 2014 Jian Wang
+% Copyright 2015 Jian Wang
 
 % This Monte Carlo simulation is developed basing on the assumption that
 % the standard deviation of drift rate is 1 in 1 millisecond and time is in
@@ -123,7 +123,7 @@ switch accelerator
            k1 = parallel.gpu.CUDAKernel('findBndHit2D.ptx','findBndHit2D.cu','withoutPos');                  
         else     
 %            % Build GPU kernel to find both bound hit and postive pdf.
-%            k1 = parallel.gpu.CUDAKernel('findBndHit2D.ptx','findBndHit2D.cu','withPos');
+           k1 = parallel.gpu.CUDAKernel('findBndHit2D.ptx','findBndHit2D.cu','withPos');
         end
         
         k1.ThreadBlockSize = [512, 1, 1];
@@ -134,36 +134,31 @@ switch accelerator
         up_pdf_t_gpu = gpuArray.zeros(nt,nd);
         lo_pdf_t_gpu = gpuArray.zeros(nt,nd);
         
-%         if notabs_flag
-%            pos_t_gpu = gpuArray.zeros(nt,nd); 
-%         end
+        if notabs_flag
+           pos_t_gpu = gpuArray.zeros(nt,nd); 
+        end
         
         Bup_gpu = gpuArray(Bup');                    
         Blo_gpu = gpuArray(Blo');
         
         for n1 = 1:nd            
             randpool_gpu = gpuArray.randn(nt*3,trials) * sigma(n1);                                               
-%             dftSum_gpu = [gpuArray.zeros(1,trials); cumsum(dftForce_gpu,1)] + y0;
-%                                                 
-%             dftBup_gpu = dftSum_gpu >= BupMtx_gpu;                        
-%             dftBlo_gpu = dftSum_gpu <= BloMtx_gpu;
-%                         
-%             clear dftForce_gpu
+                         
             hitUp_gpu = gpuArray.zeros(nt,trials);                        
             hitLo_gpu = gpuArray.zeros(nt,trials);
-%             
-%             if notabs_flag
-%                pos_gpu = gpuArray.zeros(nt,trials); 
-%             end
+            
+            if notabs_flag
+               pos_gpu = gpuArray.zeros(nt,trials); 
+            end
             
             if ~notabs_flag                
                [hitUp_gpu, hitLo_gpu] = feval(k1,randpool_gpu,...
                    Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
                    int32(nt),int32(trials),y0,drift(n1),Roh);
             else
-%                [hitUp_gpu,hitLo_gpu,pos_gpu] = feval(k1,dftBup_gpu,hitUp_gpu,...
-%                    dftBlo_gpu,hitLo_gpu,int32(nt),int32(trials),...
-%                    dftSum_gpu,pos_gpu); 
+               [hitUp_gpu, hitLo_gpu, pos_gpu] = feval(k1,randpool_gpu,...
+                   Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
+                   int32(nt),int32(trials),y0,drift(n1),Roh,pos_gpu);
             end
             
             hitUp_gpu = cumsum(hitUp_gpu,2);
@@ -171,18 +166,18 @@ switch accelerator
             up_pdf_t_gpu(:,n1) = hitUp_gpu(:,end) / trials;            
             lo_pdf_t_gpu(:,n1) = hitLo_gpu(:,end) / trials;                        
             
-%             if notabs_flag
-%                pos_gpu = cumsum(pos_gpu,2);
-%                pos_t_gpu(:,n1) = pos_gpu(:,end) / trials;
-%             end        
+            if notabs_flag
+               pos_gpu = cumsum(pos_gpu,2);
+               pos_t_gpu(:,n1) = pos_gpu(:,end) / trials;
+            end        
         end
                 
         D.up.pdf_t = transpose(gather(up_pdf_t_gpu));        
         D.lo.pdf_t = transpose(gather(lo_pdf_t_gpu));
         
-%         if notabs_flag
-%            D.notabs.pos_t = transpose(gather(pos_t_gpu));
-%         end
+        if notabs_flag
+           D.notabs.pos_t = transpose(gather(pos_t_gpu));
+        end
     
     case 'CPU'
         up_pdf_t = zeros(nt,nd);
