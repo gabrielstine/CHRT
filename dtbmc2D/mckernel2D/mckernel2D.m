@@ -86,7 +86,7 @@ else
     % Generate random number matrix for reuse.
     persistent rndPersistent; %#ok<TLEV>
     if isempty(rndPersistent)
-        rndPersistent = randn(nt-1,trials,nd);
+        rndPersistent = randn(nt-1,3,trials,nd);
     end                
 end
 
@@ -184,75 +184,68 @@ switch accelerator
 %            D.notabs.pos_t = transpose(gather(pos_t_gpu));
 %         end
     
-%     case 'CPU'
-%         up_pdf_t = zeros(nt,nd);
-%         lo_pdf_t = zeros(nt,nd);
-%         
-%         if notabs_flag
-%            pos_t = zeros(nt,nd); 
-%         end
-%         
-%         BupMtx = repmat(Bup',1,trials);
-%         BloMtx = repmat(Blo',1,trials);
-%                 
-%         for n1 = 1:nd                        
-%             dftForce = rndPersistent(:,:,n1) * sigma(n1) + drift(n1);
-%             dftSum = [zeros(1,trials); cumsum(dftForce,1)] + y0;
-%                                                                        
-%             dftBup = dftSum >= BupMtx;
-%             dftBlo = dftSum <= BloMtx;            
-%             
-%             hitUp = zeros(nt,1);
-%             hitLo = zeros(nt,1);
-%             
-%             for n2 = 1:trials
-%                 iu = find(dftBup(:,n2),1,'first'); % Index of hitting up bound.
-%                 il = find(dftBlo(:,n2),1,'first'); % Index of hitting lo bound.
-%                 
-%                 % Update bound hitting record.
-%                 if ~isempty(iu) && isempty(il)
-%                     hitUp(iu) = hitUp(iu) + 1;
-%                     
-%                     if notabs_flag
-%                        pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);                    
-%                     end                    
-%                 elseif isempty(iu) && ~isempty(il)
-%                     hitLo(il) = hitLo(il) + 1;
-%                     
-%                     if notabs_flag
-%                        pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);                     
-%                     end
-%                 elseif ~isempty(iu) && ~isempty(il)
-%                     if iu <= il
-%                         hitUp(iu) = hitUp(iu) + 1;
-%                         
-%                         if notabs_flag
-%                             pos_t(1:iu-1,n1) = pos_t(1:iu-1,n1) + (dftSum(1:iu-1,n2)>0);
-%                         end
-%                     else
-%                         hitLo(il) = hitLo(il) + 1;
-%                         
-%                         if notabs_flag
-%                             pos_t(1:il-1,n1) = pos_t(1:il-1,n1) + (dftSum(1:il-1,n2)>0);
-%                         end
-%                     end
-%                 end                
-%             end
-%             
-%             up_pdf_t(:,n1) = hitUp / trials;
-%             lo_pdf_t(:,n1) = hitLo / trials;       
-%         end
-%         
-%         if notabs_flag
-%             pos_t = pos_t / trials;
-%         end
-%                                                      
-%         D.up.pdf_t = up_pdf_t';
-%         D.lo.pdf_t = lo_pdf_t';
-%         
-%         if notabs_flag
-%            D.notabs.pos_t = pos_t'; 
-%         end
+    case 'CPU'
+        up_pdf_t = zeros(nt,nd);
+        lo_pdf_t = zeros(nt,nd);
+        
+        if notabs_flag
+           pos_t = zeros(nt,nd); 
+        end        
+                
+        for n1 = 1:nd                                   
+            hitUp = zeros(nt,1);
+            hitLo = zeros(nt,1);
+            
+            for n2 = 1:trials                
+                cu = 0;
+                cl = 0;
+                
+                for n3 = 1:nt-1
+                   % Cumulative drift.
+                   cu = cu + ((1-abs(Roh))*rndPersistent(n3,1,n2,n1) + abs(Roh)*rndPersistent(n3,2,n2,n1)) * sigma(n1) + drift(n1);
+                   cl = cl + ((1-abs(Roh))*rndPersistent(n3,3,n2,n1) +     Roh *rndPersistent(n3,2,n2,n1)) * sigma(n1) - drift(n1);
+                   
+                   % Check hitting lower reflactive bound.
+                   if cu < Blo(1+n3)
+                       cu = Blo(1+n3);
+                   end
+                   
+                   if cl < Blo(1+n3)
+                       cl = Blo(1+n3);
+                   end
+                   
+                   % Check positive non-absorptive possibility.
+                   if notabs_flag
+                       if cu > cl
+                           pos_t(1+n3,n1) = pos_t(1+n3,n1) +1;
+                       end
+                   end
+                   
+                   % Check & update upper bound hitting record.
+                   if cu > Bup(1+n3)
+                       hitUp(1+n3) = hitUp(1+n3) +1;
+                       break;
+                   elseif cl > Bup(1+n3)
+                       hitLo(1+n3) = hitLo(1+n3) +1;
+                       break;
+                   end                   
+                end                     
+            end
+            
+            up_pdf_t(:,n1) = hitUp / trials;
+            lo_pdf_t(:,n1) = hitLo / trials;       
+        end
+        
+        if notabs_flag
+            pos_t = pos_t / trials;
+        end
+                                                     
+        D.up.pdf_t = up_pdf_t';
+        D.lo.pdf_t = lo_pdf_t';
+        
+        if notabs_flag
+           D.notabs.pos_t = pos_t'; 
+        end
 end
 
 D.up.p = sum(D.up.pdf_t,2);
