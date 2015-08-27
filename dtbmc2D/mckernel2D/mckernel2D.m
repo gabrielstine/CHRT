@@ -122,13 +122,14 @@ switch accelerator
            % Build GPU kernel to find only bound hit.
            k1 = parallel.gpu.CUDAKernel('findBndHit2D.ptx','findBndHit2D.cu','withoutPos');                  
         else     
-%            % Build GPU kernel to find both bound hit and postive pdf.
+           % Build GPU kernel to find both bound hit and postive pdf.
            k1 = parallel.gpu.CUDAKernel('findBndHit2D.ptx','findBndHit2D.cu','withPos');
         end
         
-        k1.ThreadBlockSize = [512, 1, 1];
-        gridSizeX = int32(ceil(trials / k1.ThreadBlockSize(1)));
-        k1.GridSize = [gridSizeX, 1, 1];
+        nthreads = 2560; % Optimized for Nvidia K20c. 
+        k1.ThreadBlockSize = [512, 1, 1];                
+        k1.GridSize = [nthreads / k1.ThreadBlockSize(1), 1, 1];
+        n2rp = ceil(trials / nthreads);
                
         % _gpu subfix implies array allocated on GPU memory.
         up_pdf_t_gpu = gpuArray.zeros(nt,nd);
@@ -141,42 +142,48 @@ switch accelerator
         Bup_gpu = gpuArray(Bup');                    
         Blo_gpu = gpuArray(Blo');
         
-        for n1 = 1:nd            
-            randpool_gpu = gpuArray.randn(nt*3,trials) * sigma(n1);                                               
-                         
-            hitUp_gpu = gpuArray.zeros(nt,trials);                        
-            hitLo_gpu = gpuArray.zeros(nt,trials);
-            
-            if notabs_flag
-               pos_gpu = gpuArray.zeros(nt,trials); 
-            end
-            
-            if ~notabs_flag                
-               [hitUp_gpu, hitLo_gpu] = feval(k1,randpool_gpu,...
-                   Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
-                   int32(nt),int32(trials),y0,drift(n1),Roh);
-            else
-               [hitUp_gpu, hitLo_gpu, pos_gpu] = feval(k1,randpool_gpu,...
-                   Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
-                   int32(nt),int32(trials),y0,drift(n1),Roh,pos_gpu);
-            end
-            
-            hitUp_gpu = cumsum(hitUp_gpu,2);
-            hitLo_gpu = cumsum(hitLo_gpu,2);            
-            up_pdf_t_gpu(:,n1) = hitUp_gpu(:,end) / trials;            
-            lo_pdf_t_gpu(:,n1) = hitLo_gpu(:,end) / trials;                        
-            
-            if notabs_flag
-               pos_gpu = cumsum(pos_gpu,2);
-               pos_t_gpu(:,n1) = pos_gpu(:,end) / trials;
-            end        
-        end
+        for n1 = 1:nd                      
+            for n2 = 1:n2rp
+                randpool_gpu = gpuArray.randn(nt*3,nthreads) * sigma(n1);                
+                hitUp_gpu = gpuArray.zeros(nt,nthreads);
+                hitLo_gpu = gpuArray.zeros(nt,nthreads);
                 
+                if notabs_flag
+                    pos_gpu = gpuArray.zeros(nt,nthreads);
+                end
+                
+                if ~notabs_flag
+                    [hitUp_gpu, hitLo_gpu] = feval(k1,randpool_gpu,...
+                        Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
+                        int32(nt),int32(nthreads),y0,drift(n1),Roh);
+                else
+                    [hitUp_gpu, hitLo_gpu, pos_gpu] = feval(k1,randpool_gpu,...
+                        Bup_gpu,Blo_gpu,hitUp_gpu,hitLo_gpu,...
+                        int32(nt),int32(nthreads),y0,drift(n1),Roh,pos_gpu);
+                end
+                
+                up_pdf_t_gpu(:,n1) = up_pdf_t_gpu(:,n1) + sum(hitUp_gpu,2);
+                lo_pdf_t_gpu(:,n1) = lo_pdf_t_gpu(:,n1) + sum(hitLo_gpu,2);
+                
+                if notabs_flag
+                    pos_gpu = cumsum(pos_gpu,2);
+                    pos_t_gpu(:,n1) = pos_t_gpu(:,n1) + pos_gpu(:,end);
+                end
+                
+                clear hitUp_gpu hitLo_gpu pos_gpu;
+            end
+        end
+        
+        allThreads = nthreads * n2rp;
+        
+        up_pdf_t_gpu = up_pdf_t_gpu / allThreads;
+        lo_pdf_t_gpu = lo_pdf_t_gpu / allThreads;      
         D.up.pdf_t = transpose(gather(up_pdf_t_gpu));        
         D.lo.pdf_t = transpose(gather(lo_pdf_t_gpu));
         
         if notabs_flag
-           D.notabs.pos_t = transpose(gather(pos_t_gpu));
+            pos_t_gpu = pos_t_gpu / allThreads;
+            D.notabs.pos_t = transpose(gather(pos_t_gpu));
         end
     
     case 'CPU'
