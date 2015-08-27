@@ -118,28 +118,29 @@ switch opt.fitType
         yinit = zeros(size(y,1));
         
         i1 = find(y>=y0, 1,'first');
-        i2 = find(y<=y0, 1,'last');
-        if i1 == i2
-            yinit(i1,size(y,1)/2)=1;
-        else
-            w2=abs(y(i1)-y0);
-            w1=abs(y(i2)-y0);
-            
-            w1=w1/(w1+w2);
-            w2=(1-w1);
-            yinit(i1,size(y,1)/2)=w1;
-            yinit(i2,size(y,1)/2)=w2;
-        end
-        
+%         i2 = find(y<=y0, 1,'last');
+%         if i1 == i2
+%             yinit(i1,size(y,1)/2)=1;
+%         else
+%             w2=abs(y(i1)-y0);
+%             w1=abs(y(i2)-y0);
+%             
+%             w1=w1/(w1+w2);
+%             w2=(1-w1);
+%             yinit(i1,size(y,1)/2)=w1;
+%             yinit(i2,size(y,1)/2)=w2;
+%         end
+        yinit(i1,size(y,1)/2) = 1;
+
 %         useGPU = false;                
 %         P = spectral_dtbAA(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU,dfu);
-%         P = spectral_dtb_2d(drift,t,Bup,Blo,y,yinit,notabs_flag,useGPU,dfu);
         
         Coh = eye(2);
         Coh(1,2) = Roh;
         Coh(2,1) = Roh;
         
-        P = spectral_dtb_2d([-drift',drift'],Coh,t,[Blo,Bup],y,yinit,notabs_flag);
+        % Potential error in spectral DTB 2D code
+        P = spectral_dtb_2d([-drift',drift'],Coh,t,[Blo',Bup'],y,yinit,notabs_flag);
 %         
 %     case 'FP4'        
 %         P = FP4Wrapper(drift,dfu,t,Bup,Blo,y0,notabs_flag);
