@@ -16,12 +16,12 @@ __global__ void withoutPos(const double* randpool,
 		double rup = y0, rlo = y0; // Upper & lower competing races. 
 		double thisBUp, thisBLow; // Upper & lower bound height at this time.
 
-		int m = thisThread * ntime * 3.0; // Index of rand number.
+		int m = thisThread * ntime * 2; // Index of rand number.
 		int k = thisThread * ntime; // Index of boundary.
 
 		for (int n = 0; n < ntime-1; ++n) {
-			rup += ((1-abs(cov))*randpool[m] + abs(cov)*randpool[m+1]) + mu;
-			rlo += ((1-abs(cov))*randpool[m+2] + cov*randpool[m+1])    - mu;
+			rup += randpool[m] + mu;
+			rlo += randpool[m+1]  - mu;
 
 			thisBUp = bup[n+1];
 			thisBLow = blo[n+1];
@@ -45,7 +45,7 @@ __global__ void withoutPos(const double* randpool,
 				break;
 			}
 
-			m += 3;
+			m += 2;
 			k++;
 		}
 	}
@@ -70,12 +70,12 @@ __global__ void withPos(const double* randpool,
 		double rup = y0, rlo = y0; // Upper & lower competing races. 
 		double thisBUp, thisBLow; // Upper & lower bound height at this time.
 
-		int m = thisThread * ntime * 3.0; // Index of rand number.
+		int m = thisThread * ntime * 2; // Index of rand number.
 		int k = thisThread * ntime; // Index of boundary.
 
 		for (int n = 0; n < ntime-1; ++n) {
-			rup += ((1-abs(cov))*randpool[m] + abs(cov)*randpool[m+1]) + mu;
-			rlo += ((1-abs(cov))*randpool[m+2] + cov*randpool[m+1])    - mu;
+			rup += randpool[m] + mu;
+			rlo += randpool[m+1] - mu;
 
 			thisBUp = bup[n+1];
 			thisBLow = blo[n+1];
@@ -104,7 +104,7 @@ __global__ void withPos(const double* randpool,
 				break;
 			}
 
-			m += 3;
+			m += 2;
 			k++;
 		}
 	}

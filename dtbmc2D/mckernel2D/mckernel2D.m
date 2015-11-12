@@ -86,7 +86,7 @@ else
     % Generate random number matrix for reuse.
     persistent rndPersistent; %#ok<TLEV>
     if isempty(rndPersistent)
-        rndPersistent = randn(nt-1,3,trials,nd);
+        rndPersistent = randn(nt-1,2,trials,nd);
     end                
 end
 
@@ -141,10 +141,12 @@ switch accelerator
         
         Bup_gpu = gpuArray(Bup');                    
         Blo_gpu = gpuArray(Blo');
-        
+                 
+        T_cov = cholcov([1.0, Roh; Roh, 1.0]);
+                        
         for n1 = 1:nd                      
             for n2 = 1:n2rp
-                randpool_gpu = gpuArray.randn(nt*3,nthreads) * sigma(n1);                
+                randpool_gpu = transpose(gpuArray.randn(nt*nthreads, 2) * T_cov * sigma(n1));                
                 hitUp_gpu = gpuArray.zeros(nt,nthreads);
                 hitLo_gpu = gpuArray.zeros(nt,nthreads);
                 
