@@ -86,7 +86,7 @@ else
     % Generate random number matrix for reuse.
     persistent rndPersistent; %#ok<TLEV>
     if isempty(rndPersistent)
-        rndPersistent = randn(nd,trials,nt-1,2);
+        rndPersistent = randn(2,nd*trials*(nt-1));
     end                
 end
 
@@ -197,7 +197,7 @@ switch accelerator
         end     
         
         T_cov = cholcov([1.0, Roh; Roh, 1.0]);
-        rndTemp = transpose(rndPersistent * T_cov);
+        %rndTemp = transpose(rndPersistent * T_cov);
                 
         for n1 = 1:nd                                   
             hitUp = zeros(nt,1);
@@ -209,8 +209,13 @@ switch accelerator
                 
                 for n3 = 1:nt-1
                    % Cumulative drift.
-                   cu = cu + rndPersistent(1,n3,n2,n1) * sigma(n1) + drift(n1);
-                   cl = cl + rndPersistent(2,n3,n2,n1) * sigma(n1) - drift(n1);
+                   ldx = n3 + (n2-1)*(nt-1) + (n1-1)*(nt-1)*trials;
+                   cu = cu + ...
+                       (rndPersistent(1,ldx)*T_cov(1,1)+rndPersistent(2,ldx)*T_cov(2,1))...
+                       *sigma(n1) + drift(n1);
+                   cl = cl + ...
+                       (rndPersistent(1,ldx)*T_cov(1,2)+rndPersistent(2,ldx)*T_cov(2,2))...
+                       *sigma(n1) - drift(n1);
                    
                    % Check hitting lower reflactive bound.
                    if cu < Blo(1+n3)
