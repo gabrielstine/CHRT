@@ -479,6 +479,10 @@ fitOptions.tMax = 5.0
 
 fitResult = mc2DFit(data,fitOptions)
 
+% or use Spectral_DTB_2D
+
+fitResult2 = dtb2DFit(data,fitOptions)
+
 
 
 
