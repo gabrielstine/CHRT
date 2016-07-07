@@ -342,7 +342,8 @@ fitOptions.lowerBoundaryLowerLimit = [0.0, 0.0,0.0,0.0,0.0]
 % methods. User can set 'optMethod' field to one of them by their own favor. 
 % By default, if not setting, fminsearchbnd optimization method will be
 % used for optimization. However, 'fmincon' is the recommended optimization 
-% method. User can start with 'fmincon' and try other optimization methods.
+% method. User can start with 'fmincon' and then try other optimization 
+% methods.
 
 fitOptions.optMethod = 'fmincon'
 
