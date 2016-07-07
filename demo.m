@@ -481,6 +481,8 @@ fitResult = mc2DFit(data,fitOptions)
 
 % or use Spectral_DTB_2D
 
+fitOptions.NumWorkers = 12
+fitOptions.isUseGPU = false
 fitResult2 = dtb2DFit(data,fitOptions)
 
 
