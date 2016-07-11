@@ -8,7 +8,11 @@ function [b,dev,stats,prData] = logitFit(data)
 %       dev is the deviance of the fit,
 %       stats is the structure containing fitting fields,
 %       prData is the calculated proportion rightward choice data.
-%       
+%  
+%   LOGITFIT requires that the input fitting data is a 3 column matrix even
+%   though it does not use the 3rd column time data. It simply condenses
+%   fitting data and calls GLMFIT to fit the condensed data.
+%
 %   See also GLMFIT.
 
 %   Copyright Jian Wang 2014
