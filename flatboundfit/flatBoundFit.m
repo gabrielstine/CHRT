@@ -1,5 +1,5 @@
 function [thetaFit,err,exitflag,output,fitOptions] = flatBoundFit(data,fitOptions,varargin)
-%FLATBOUDFIT apply Flat Bound fit to 1D signed coherence data
+%FLATBOUNDFIT apply Flat Bound fit to 1D signed coherence data
 %   [thetaFit, fitOptions] = flatBoundFit(data,fitOptions,varargin)
 %   where
 %       data is 1D signed coherence data,

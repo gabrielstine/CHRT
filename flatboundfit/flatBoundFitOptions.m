@@ -1,11 +1,13 @@
 classdef flatBoundFitOptions
     %FLATBOUNDFITOPTIONS
-    
+    %   Fitting options used by FLATBOUNDFIT. Read flatBoundFitOptions.m
+    %   for more details.
+    %
     %   Copyright Jian Wang 2015
     
     
     properties
-        theta = NaN(1,7);
+        theta = NaN(1,7); % Fitting parameters in the order of thetaKey
     end
     
     properties (Constant = true)
@@ -20,7 +22,7 @@ classdef flatBoundFitOptions
     end
     
     properties
-        thetaFit;        
+        thetaFit; % Fitted parameters        
         condensedData;
     end
     
